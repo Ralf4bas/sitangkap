@@ -1,0 +1,20 @@
+# /etc/systemd/system/sitangkap.service
+# Menjalankan backend SiTangkap (yang juga melayani hasil build frontend lewat STATIC_DIR).
+# Panduan: docs/02-cicd-jenkins.md bagian CI-03.
+[Unit]
+Description=SiTangkap - pencatatan transaksi lelang ikan TPI
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=sitangkap
+Group=sitangkap
+WorkingDirectory=/opt/sitangkap
+EnvironmentFile=/opt/sitangkap/.env
+ExecStart=/opt/sitangkap/bin/sitangkap
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

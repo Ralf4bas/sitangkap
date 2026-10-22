@@ -1,0 +1,20 @@
+# Rahasia dan konfigurasi lokal
+.env
+*.env.local
+
+# Backend
+backend/sitangkap
+backend/sitangkap.exe
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/.astro/
+
+# Lain-lain
+.DS_Store
+.vscode/
+.idea/
+*.log
+cookie.txt
+dinas.txt

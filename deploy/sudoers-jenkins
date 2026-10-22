@@ -1,0 +1,3 @@
+# /etc/sudoers.d/sitangkap-jenkins  (mode 440, cek dengan: sudo visudo -c)
+# Izinkan Jenkins HANYA me-restart service sitangkap dan membaca log-nya.
+jenkins ALL=(root) NOPASSWD: /usr/bin/systemctl restart sitangkap, /usr/bin/journalctl -u sitangkap -n 50 --no-pager

@@ -1,0 +1,6 @@
+# Otomatis meminta review di setiap pull request. Panduan: docs/03-git-workflow.md bagian 10.5
+# PM (tmthy) = @tmthyjw23 otomatis diminta me-review setiap PR.
+# Jangan aktifkan "Require review from Code Owners" di proteksi branch: PM tidak bisa
+# meng-approve PR-nya sendiri, jadi aturan itu akan mengunci PR milik PM.
+
+*    @tmthyjw23
