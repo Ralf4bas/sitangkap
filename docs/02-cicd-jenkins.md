@@ -38,11 +38,11 @@ sudo apt update && sudo apt -y upgrade
 sudo apt -y install git curl rsync fontconfig openjdk-21-jre mysql-server
 ```
 
-**Go** (unduh versi stabil terbaru dari <https://go.dev/dl/>, contoh di bawah memakai 1.24.x):
+**Go** (unduh versi stabil terbaru dari <https://go.dev/dl/>, minimal 1.26 karena `golang.org/x/crypto` terbaru membutuhkannya; contoh di bawah memakai 1.26.x):
 
 ```bash
-curl -fsSLO https://go.dev/dl/go1.24.7.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.24.7.linux-amd64.tar.gz
+curl -fsSLO https://go.dev/dl/go1.26.10.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.26.10.linux-amd64.tar.gz
 sudo ln -sf /usr/local/go/bin/go /usr/local/bin/go      # agar user jenkins juga menemukan go
 go version
 ```
