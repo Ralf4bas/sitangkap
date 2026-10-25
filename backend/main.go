@@ -30,15 +30,27 @@ func newApp(store Store, cfg Config, now func() time.Time) *App {
 
 func (a *App) routes() http.Handler {
 	mux := http.NewServeMux()
+	petugas := []string{"petugas"}
+	dinas := []string{"dinas"}
 	semua := []string{}
 
+	mux.HandleFunc("GET /health", a.handleHealth)
 	mux.HandleFunc("POST /api/login", a.handleLogin)
 	mux.HandleFunc("POST /api/logout", a.handleLogout)
 	mux.HandleFunc("GET /api/me", a.withAuth(semua, a.handleMe))
+	mux.HandleFunc("GET /api/transaksi", a.withAuth(semua, a.handleListTransaksi))
+	mux.HandleFunc("POST /api/transaksi", a.withAuth(petugas, a.handleCreateTransaksi))
+	mux.HandleFunc("PUT /api/transaksi/{id}", a.withAuth(petugas, a.handleUpdateTransaksi))
+	mux.HandleFunc("DELETE /api/transaksi/{id}", a.withAuth(petugas, a.handleDeleteTransaksi))
+	mux.HandleFunc("GET /api/rekap", a.withAuth(dinas, a.handleRekap))
+	// Path /api/ lain, termasuk method yang tidak terdaftar (misal PATCH), dijawab 404 NOT_FOUND.
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		notFound(w)
 	})
-	return mux
+	if a.cfg.StaticDir != "" {
+		mux.Handle("/", http.FileServer(fsTanpaDaftar{http.Dir(a.cfg.StaticDir)}))
+	}
+	return a.logRequests(a.recoverPanic(mux))
 }
 
 func openDB(cfg Config) (*sql.DB, error) {
