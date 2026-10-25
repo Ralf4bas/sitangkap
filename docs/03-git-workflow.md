@@ -140,6 +140,8 @@ Commit sesering perlu. Semua commit di branch ini nanti digabung menjadi satu co
 | `fix` | Perbaikan bug | `fix(backend): B-09 PUT mengembalikan 404 untuk id tidak ada` |
 | `test` | Menambah atau mengubah tes | `test(backend): B-10 tes T-13 rekap` |
 | `docs` | Dokumen | `docs(pm): perbarui kontrak meta tarif_retribusi` |
+
+`<peran>` di pesan commit hanya boleh salah satu dari: `frontend`, `backend`, `database`, `pm`. Bukan `db`, `fe`, atau `be`. Perhatikan bahwa ini berbeda dari awalan nama branch: perubahan PM memakai branch `docs/...` atau `ci/...`, tetapi pesan commit-nya tetap `(pm)`.
 | `chore` | Konfigurasi, dependensi, rapi-rapi | `chore(frontend): FE-01 inisialisasi proyek Astro` |
 
 **Apa yang boleh di-commit:**

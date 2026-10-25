@@ -279,7 +279,7 @@ Reset data kapan saja: jalankan ulang `db/seed.sql`.
 - [ ] Constraint menolak berat negatif
 - [ ] `queries.md` berisi Q-01 s.d. Q-09 dan DSN
 - [ ] `db/README.md` sudah dicoba oleh satu anggota lain dari nol
-- [ ] Semua lewat pull request ke `main`, ditinjau PM
+- [ ] Semua lewat pull request ke `dev`, ditinjau PM
 
 ## Prompt siap pakai untuk AI agent
 

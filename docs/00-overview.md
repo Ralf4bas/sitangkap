@@ -81,7 +81,7 @@ Batasan analisis: disusun dari dokumen daring tanpa observasi lapangan; sebagian
 | NFR-001 | Password disimpan sebagai hash bcrypt (cost 12), tidak pernah teks biasa | Must |
 | NFR-002 | Semua query SQL memakai parameter (`?`), tidak pernah menggabungkan string input | Must |
 | NFR-003 | Cookie sesi bersifat `HttpOnly`, `SameSite=Lax`, berlaku 8 jam | Must |
-| NFR-004 | `go vet`, `go test`, dan `npm run build` harus lulus sebelum merge ke `main` | Must |
+| NFR-004 | `go vet`, `go test`, dan `npm run build` harus lulus sebelum merge: pembuat PR menempelkan output-nya di setiap PR ke `dev`, dan Jenkins menjalankannya lagi di setiap rilis ke `main` sebelum deploy | Must |
 | NFR-005 | Respons API di bawah 1 detik untuk data sampai 1.000 transaksi di laptop development | Should |
 | NFR-006 | Halaman login di bawah 100 KB terkirim (tanpa font atau library dari CDN) | Should |
 | NFR-007 | Halaman bisa dipakai di layar lebar 360 px; tabel boleh digeser di dalam kotaknya sendiri | Should |
