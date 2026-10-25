@@ -1,0 +1,73 @@
+/* Gaya khusus halaman (FE-06 s.d. FE-09). Semua warna lewat variabel dari global.css. */
+
+[hidden] { display: none !important; }
+
+/* Topbar */
+.topbar-kiri { display: flex; flex-direction: column; min-width: 0; }
+.topbar .brand { font-size: 18px; }
+.topbar .tpi { font-size: 13px; opacity: 0.85; }
+.topbar-kanan { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+#topbar-user { font-size: 14px; }
+
+/* Judul halaman + tombol */
+.judul-baris { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* Login */
+.login-latar { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.login-kartu {
+  width: min(420px, 100%);
+  padding: 32px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-kartu h1 { color: var(--c-brand); }
+.login-kartu .btn { width: 100%; }
+.catatan { margin: 0; font-size: 13px; color: var(--c-muted); }
+
+/* Form di modal */
+.form-grid { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.form-dua { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-aksi { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+dialog h2 { margin: 0; font-size: 18px; }
+dialog p { margin: 8px 0 0; }
+.pratinjau {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg);
+}
+.pratinjau div { display: flex; justify-content: space-between; gap: 12px; }
+.pratinjau strong { font-weight: 700; }
+
+/* Tabel */
+td.aksi { white-space: nowrap; }
+td.aksi .btn { padding: 6px 12px; font-size: 13px; margin-right: 6px; }
+.kosong { text-align: center; padding: 32px 16px; color: var(--c-muted); }
+.kosong strong { display: block; color: var(--c-ink); font-size: 15px; margin-bottom: 4px; }
+.footer-tabel { margin: 0; font-size: 13px; color: var(--c-muted); }
+
+/* Dinas */
+.filter { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.filter .field { min-width: 150px; }
+.filter-cepat { display: flex; gap: 8px; flex-wrap: wrap; }
+.grid-kartu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kartu .angka { text-align: left; }
+.keterangan { margin: 0; font-size: 13px; color: var(--c-muted); }
+
+@media (max-width: 900px) {
+  .grid-kartu { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .grid-kartu { grid-template-columns: 1fr; }
+  .form-dua { grid-template-columns: 1fr; }
+  .filter { flex-direction: column; align-items: stretch; }
+  .login-kartu { padding: 24px; }
+}
