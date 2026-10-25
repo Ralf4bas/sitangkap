@@ -29,7 +29,7 @@ Kirim ke grup, minta tiap orang membalas hasil perintahnya:
 ```bash
 git --version
 go version        # 1.22 atau lebih baru  (wajib: Rafli, Magen [uji integrasi F-xx]; disarankan: semua)
-node -v           # v22.x                  (wajib: Magen; disarankan: semua)
+node -v           # v22.23.4 atau lebih baru (syarat Astro 7) (wajib: Magen; disarankan: semua)
 mysql --version   # MySQL 8.0.16+ / MariaDB 10.6+ (wajib: abas, Rafli, Magen; disarankan: semua)
 ```
 

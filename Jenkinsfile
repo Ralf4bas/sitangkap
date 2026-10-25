@@ -54,6 +54,11 @@ pipeline {
       steps {
         sh '''
           set -e
+          # Simpan versi yang sedang jalan untuk rollback (deploy pertama: belum ada, dilewati)
+          if [ -f "$APP_DIR/bin/sitangkap" ]; then
+            install -m 755 "$APP_DIR/bin/sitangkap" "$APP_DIR/prev/sitangkap"
+            rsync -a --delete "$APP_DIR/frontend/" "$APP_DIR/prev/frontend/"
+          fi
           install -m 755 backend/sitangkap "$APP_DIR/bin/sitangkap.new"
           mv -f "$APP_DIR/bin/sitangkap.new" "$APP_DIR/bin/sitangkap"
           rsync -a --delete frontend/dist/ "$APP_DIR/frontend/"
@@ -71,6 +76,13 @@ pipeline {
           done
           echo "Smoke test gagal: /health tidak menjawab ok"
           sudo /usr/bin/journalctl -u sitangkap -n 50 --no-pager || true
+          if [ -f "$APP_DIR/prev/sitangkap" ]; then
+            echo "Rollback ke versi sebelumnya"
+            install -m 755 "$APP_DIR/prev/sitangkap" "$APP_DIR/bin/sitangkap.new"
+            mv -f "$APP_DIR/bin/sitangkap.new" "$APP_DIR/bin/sitangkap"
+            rsync -a --delete "$APP_DIR/prev/frontend/" "$APP_DIR/frontend/"
+            sudo /usr/bin/systemctl restart sitangkap
+          fi
           exit 1
         '''
       }
@@ -79,6 +91,6 @@ pipeline {
 
   post {
     success { echo 'Berhasil: aplikasi di server sudah memakai commit terbaru.' }
-    failure { echo 'Gagal: lihat stage yang merah di Console Output. Aplikasi di server tidak diubah bila gagal sebelum Deploy.' }
+    failure { echo 'Gagal: lihat stage yang merah di Console Output. Gagal sebelum Deploy: aplikasi di server tidak diubah. Gagal di Smoke test: versi sebelumnya sudah dipulihkan (kecuali deploy pertama).' }
   }
 }
