@@ -169,7 +169,7 @@ flowchart LR
 
 | Bagian | Teknologi | Catatan |
 | --- | --- | --- |
-| Backend | Go 1.22+ | `net/http` standar (pola rute Go 1.22), `database/sql`, `github.com/go-sql-driver/mysql`, `golang.org/x/crypto/bcrypt`. Tidak memakai framework (Gin, Echo, dll.) |
+| Backend | Go 1.26+ | `net/http` standar (pola rute Go 1.22), `database/sql`, `github.com/go-sql-driver/mysql`, `golang.org/x/crypto/bcrypt`. Tidak memakai framework (Gin, Echo, dll.) |
 | Frontend | Astro, output statis | JavaScript biasa di sisi klien, CSS sendiri. Tidak memakai React/Vue/Tailwind |
 | Database | MySQL 8 (atau MariaDB 10.6+) | Satu database `sitangkap`, dua tabel |
 | Versi kode | Git + GitHub | Satu repo, folder `backend/`, `frontend/`, `db/`, `docs/` |
