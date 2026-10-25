@@ -17,7 +17,7 @@
 
 ## Aturan teknis yang tidak boleh dilanggar
 
-1. Go 1.22 atau lebih baru. Router memakai `net/http` standar dengan pola `"GET /api/transaksi/{id}"`. **Tanpa framework** (Gin, Echo, Fiber, Chi, dll.).
+1. Go 1.26 atau lebih baru (`golang.org/x/crypto` terbaru membutuhkan go 1.26). Router memakai `net/http` standar dengan pola `"GET /api/transaksi/{id}"`. **Tanpa framework** (Gin, Echo, Fiber, Chi, dll.).
 2. Dependensi hanya dua: `github.com/go-sql-driver/mysql` dan `golang.org/x/crypto/bcrypt`. Jangan menambah library lain (termasuk `godotenv`, `sqlx`, `gorm`, `testify`).
 3. Semua query memakai `?` (NFR-002) dan diambil dari `db/queries.md`.
 4. Semua angka uang dihitung di satu tempat (`hitung.go`) dengan aritmetika integer (lihat B-05).
@@ -30,7 +30,7 @@ Satu paket `main`, datar. Pembagian file mengikuti pola controller, service, dan
 
 ```text
 backend/
-  go.mod                 module sitangkap/backend, go 1.22
+  go.mod                 module sitangkap/backend, go 1.26.0
   go.sum
   .env.example           contoh konfigurasi (di-commit)
   .env                   konfigurasi lokal (TIDAK di-commit)
@@ -445,7 +445,7 @@ Aturan:
 - Hanya ubah file di folder backend/.
 - Ikuti docs/01-api-contract.md persis: nama field, kode status, kode dan pesan error.
 - Dependensi hanya github.com/go-sql-driver/mysql dan golang.org/x/crypto/bcrypt.
-- Router net/http standar Go 1.22 dengan pola "METHOD /path/{id}".
+- Go 1.26+, router net/http standar dengan pola "METHOD /path/{id}".
 - Semua SQL dari db/queries.md dengan placeholder ?.
 - Tulis atau perbarui tes yang relevan, lalu jalankan `go vet ./...` dan `go test ./...` dan tunjukkan hasilnya.
 Kalau kontrak tidak menjawab sesuatu, berhenti dan tanyakan; jangan menebak atau menambah endpoint.
