@@ -2,12 +2,24 @@ package main
 
 import (
 	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
+
+// TestMain membuang log request supaya output go test hanya berisi hasil tes.
+// Jalankan dengan SITANGKAP_LOG_TES=1 untuk melihat log-nya.
+func TestMain(m *testing.M) {
+	if os.Getenv("SITANGKAP_LOG_TES") != "1" {
+		log.SetOutput(io.Discard)
+	}
+	os.Exit(m.Run())
+}
 
 // ---------- Perangkat tes HTTP ----------
 
