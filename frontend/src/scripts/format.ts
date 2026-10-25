@@ -13,6 +13,12 @@ export function berat(n: number): string {
   return fmtBerat.format(n);
 }
 
+/** Isi awal input berat di form ubah: 1500 -> "1500"; 120.5 -> "120,5". Sengaja tanpa pemisah ribuan:
+ *  berat() menghasilkan "1.500", dan parseBerat() membaca titik sebagai desimal (= 1,5 kg). */
+export function beratInput(n: number): string {
+  return String(n).replace('.', ',');
+}
+
 /** "2026-10-22" -> "22/10/2026". Sengaja memotong string, bukan lewat new Date(). */
 export function tanggalID(s: string): string {
   return `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;

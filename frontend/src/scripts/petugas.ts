@@ -10,7 +10,7 @@ import {
 } from './api';
 import type { Transaksi, TransaksiInput } from './api';
 import { $, el, sembunyikan, tampilkan } from './dom';
-import { berat, hariIniISO, parseBerat, parseHarga, persen, rupiah, tanggalID } from './format';
+import { berat, beratInput, hariIniISO, parseBerat, parseHarga, persen, rupiah, tanggalID } from './format';
 import { requireRole } from './guard';
 import { hitungNilai, hitungRetribusi } from './hitung';
 
@@ -154,7 +154,7 @@ function perbaruiPratinjau(): void {
 function isiForm(t: Transaksi | null): void {
   fNama.value = t ? t.nama_nelayan : '';
   fIkan.value = t ? t.jenis_ikan : '';
-  fBerat.value = t ? berat(t.berat_kg) : '';
+  fBerat.value = t ? beratInput(t.berat_kg) : '';
   fHarga.value = t ? String(t.harga_per_kg) : '';
   fTanggal.value = t ? t.tanggal : hariIniISO();
   fTanggal.max = hariIniISO();
