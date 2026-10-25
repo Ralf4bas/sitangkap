@@ -30,18 +30,17 @@ function buat(id: number, nama: string, ikan: string, beratKg: number, harga: nu
   };
 }
 
-// 8 transaksi. Lima baris Oktober 2026 memakai angka dari tabel contoh kontrak (total 370,75 kg).
-// SEMENTARA: nama, jenis ikan, dan tiga baris September belum disalin dari db/seed.sql (belum ada di dev).
-// Setelah seed.sql abas masuk, samakan isi daftar ini dengan seed.
+// 8 transaksi, sama persis dengan db/seed.sql (id sesuai urutan INSERT di seed).
+// Lima baris Oktober 2026 = tabel contoh kontrak bagian 3 (total 370,75 kg).
 const data: Transaksi[] = [
-  buat(1, 'Pak Deni', 'Layang', 40, 21000, '2026-09-02'),
-  buat(2, 'Pak Andi', 'Tuna', 25.5, 63000, '2026-09-15'),
-  buat(3, 'Pak Roni', 'Cakalang', 60, 26000, '2026-09-28'),
-  buat(4, 'Pak Yusuf', 'Cakalang', 95, 27500, '2026-10-05'),
-  buat(5, 'Pak Hasan', 'Tongkol', 80, 25000, '2026-10-10'),
-  buat(6, 'Pak Deni', 'Layang', 30.25, 22000, '2026-10-15'),
-  buat(7, 'Pak Andi', 'Tuna', 45, 65000, '2026-10-20'),
-  buat(8, 'Pak Roni', 'Cakalang', 120.5, 28000, '2026-10-22'),
+  buat(1, 'Pak Roni', 'Cakalang', 120.5, 28000, '2026-10-22'),
+  buat(2, 'Pak Yance', 'Tuna', 45, 65000, '2026-10-22'),
+  buat(3, 'Ibu Merry', 'Julung-julung', 30.25, 22000, '2026-10-22'),
+  buat(4, 'Pak Hendrik', 'Tongkol', 80, 25000, '2026-10-21'),
+  buat(5, 'Pak Roni', 'Cakalang', 95, 27500, '2026-10-21'),
+  buat(6, 'Pak Yance', 'Tuna', 60, 63000, '2026-09-15'),
+  buat(7, 'Ibu Merry', 'Layang', 40, 18000, '2026-09-10'),
+  buat(8, 'Pak Hendrik', 'Cakalang', 110, 26000, '2026-08-05'),
 ];
 let idBerikut = 9;
 
