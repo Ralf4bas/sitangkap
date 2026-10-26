@@ -20,40 +20,62 @@
 1. Go 1.26 atau lebih baru (`golang.org/x/crypto` terbaru membutuhkan go 1.26). Router memakai `net/http` standar dengan pola `"GET /api/transaksi/{id}"`. **Tanpa framework** (Gin, Echo, Fiber, Chi, dll.).
 2. Dependensi hanya dua: `github.com/go-sql-driver/mysql` dan `golang.org/x/crypto/bcrypt`. Jangan menambah library lain (termasuk `godotenv`, `sqlx`, `gorm`, `testify`).
 3. Semua query memakai `?` (NFR-002) dan diambil dari `db/queries.md`.
-4. Semua angka uang dihitung di satu tempat (`hitung.go`) dengan aritmetika integer (lihat B-05).
+4. Semua angka uang dihitung di satu tempat (`services/hitung.go`) dengan aritmetika integer (lihat B-05).
 5. Pesan error ke klien hanya yang tertulis di kontrak. Error asli dicatat ke log, tidak pernah dikirim ke klien (NFR-008).
 6. Password tidak pernah dicatat di log dan tidak pernah dikirim di respons.
 
 ## Struktur folder
 
-Satu paket `main`, datar. Pembagian file mengikuti pola controller, service, dan repository dari materi Class Diagram, supaya mudah dijelaskan di laporan.
+Satu package per folder (B-12), mengikuti pola controller, service, dan repository dari materi Class Diagram, supaya mudah dijelaskan di laporan. `main.go` hanya merakit semuanya. Jalankan dengan `go run .` dari folder `backend/`, **bukan** `go run main.go` (perintah itu hanya meng-compile satu file).
 
 ```text
 backend/
-  go.mod                 module sitangkap/backend, go 1.26.0
+  go.mod                         module sitangkap/backend, go 1.26.0
   go.sum
-  .env.example           contoh konfigurasi (di-commit)
-  .env                   konfigurasi lokal (TIDAK di-commit)
-  main.go                baca config, buka DB, rakit App, daftarkan rute, jalankan server
-  config.go              baca .env + environment, validasi nilai
-  respond.go             helper JSON: writeJSON, writeError, decodeBody
-  store.go               interface Store + tipe data (repository: kontrak)
-  store_mysql.go         implementasi Store dengan MySQL (repository)
-  auth.go                sesi, cookie, middleware withAuth, handler login/logout/me (controller)
-  transaksi.go           handler list/create/update/delete (controller)
-  rekap.go               handler rekap (controller)
-  hitung.go              hitungNilai, hitungRetribusi, rekap (service: business rule BR-05)
-  validasi.go            parse + validasi body transaksi dan query tanggal (service: BR-02..04, BR-07, BR-09)
-  health.go              handler /health
-  memstore_test.go       Store palsu di memori, khusus tes
-  *_test.go              tes T-01 s.d. T-16
+  .env.example                   contoh konfigurasi (di-commit)
+  .env                           konfigurasi lokal (TIDAK di-commit)
+  main.go                        baca config, buka DB, rakit handler + middleware, jalankan server
+  config/
+    env.go                       LoadDotEnv, Load (validasi nilai), DSN
+    database.go                  OpenDB: koneksi dibuka sekali di awal, ping 5 detik
+  models/
+    user.go                      User, UserWithHash
+    transaksi.go                 TransaksiInput, TransaksiRow, TransaksiJSON, RekapJSON
+  repository/
+    store.go                     interface Store + ErrNotFound (kontrak repository)
+    mysql.go                     MySQLStore: Q-01 s.d. Q-09 dari db/queries.md
+  services/
+    hitung.go                    HitungNilai, HitungRetribusi, KeTransaksiJSON, HitungRekap (BR-05)
+    validasi.go                  ParseTransaksi, ParseRentang (BR-02..04, BR-07, BR-09)
+    sesi.go                      Sessions: sesi login di memori
+  helpers/
+    respond.go                   WriteJSON, WriteError, WriteData, DecodeBody, pesan error kontrak
+  handlers/
+    handler.go                   struct Handler (Store, Sessions, Cfg, Now)
+    auth.go                      LoginHandler, LogoutHandler, MeHandler, cookie
+    transaksi.go                 List/Create/Update/DeleteTransaksiHandler
+    rekap.go                     RekapHandler
+    health.go                    HealthHandler
+  middlewares/
+    auth.go                      Auth.Require: cek sesi (401) dan peran (403)
+    logging.go                   LogRequests, RecoverPanic
+  routes/
+    web.go                       SetupRoutes: semua endpoint kontrak + file statis STATIC_DIR
+    static.go                    file statis tanpa daftar isi folder
+    memstore_test.go             Store palsu di memori, khusus tes
+    api_test.go, transaksi_test.go   tes HTTP T-01 s.d. T-11, T-13 s.d. T-16
 ```
 
-| Lapisan (materi SAD) | File | Tanggung jawab |
+Tes unit ada di package masing-masing (`config`, `helpers`, `services` termasuk T-12, `repository`).
+
+| Lapisan (materi SAD) | Folder | Tanggung jawab |
 | --- | --- | --- |
-| Controller | `auth.go`, `transaksi.go`, `rekap.go`, `health.go` | Terima request, cek sesi dan peran, panggil service dan repository, tulis respons |
-| Service | `hitung.go`, `validasi.go` | Aturan bisnis, tanpa HTTP dan tanpa SQL |
-| Repository | `store.go`, `store_mysql.go` | Akses database |
+| Controller | `handlers/`, `middlewares/`, `routes/` | Terima request, cek sesi dan peran, panggil service dan repository, tulis respons |
+| Service | `services/` | Aturan bisnis, tanpa HTTP dan tanpa SQL |
+| Repository | `repository/` | Akses database |
+| Model | `models/` | Struktur data yang dipakai semua lapisan |
+
+Bagian B-02 sampai B-11 di bawah ditulis saat backend masih satu paket datar. Nama fungsinya sekarang diekspor dan dipindah ke folder di atas, misalnya `loadConfig` menjadi `config.Load`, `hitungNilai` menjadi `services.HitungNilai`, `withAuth` menjadi `middlewares.Auth.Require`, dan `a.routes()` menjadi `routes.SetupRoutes`. Isi dan aturannya tidak berubah.
 
 ## B-01 · Inisialisasi modul
 
