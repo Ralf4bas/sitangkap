@@ -87,6 +87,8 @@ func TestT17Normalisasi(t *testing.T) {
 		"kgx":                          "kgx",
 		"wkwkwk makasih":               "wkwk terima kasih",
 		"rekap 01/10/2026":             "rekap 01/10/2026",
+		"trus duitnya berapa":          "trus uang berapa",
+		"yg pendapatannya":             "yang pendapatan",
 	} {
 		if got := NormalisasiPesan(masuk); got != mau {
 			t.Errorf("NormalisasiPesan(%q) = %q, mau %q", masuk, got, mau)
@@ -127,6 +129,7 @@ func TestT18Rentang(t *testing.T) {
 		{"rekap tahun ini", Konteks{}, "2026-01-01", "2026-10-22"},
 		{"rekap februari", Konteks{}, "2026-02-01", "2026-02-28"},
 		{"rekap oktober 2025", Konteks{}, "2025-10-01", "2025-10-31"},
+		{"pendapatan oktober kemarin", Konteks{}, "2026-10-01", "2026-10-31"},
 		{"rekap 15/9/2026", Konteks{}, "2026-09-15", "2026-09-15"},
 		{"rekap 2026-09-01 sampai 2026-09-30", Konteks{}, "2026-09-01", "2026-09-30"},
 		{"rekap", Konteks{}, "2026-10-01", "2026-10-22"},
@@ -157,6 +160,8 @@ func TestT19UrutanNiat(t *testing.T) {
 		{"total retribusi", Konteks{}, NiatRetribusi, nil},
 		{"transaksi terakhir", Konteks{}, NiatTransaksiTerakhir, nil},
 		{"ikan terbanyak", Konteks{}, NiatIkanTerbanyak, nil},
+		{"ikan apa yang paling laris bulan ini?", Konteks{Niat: NiatRetribusi}, NiatIkanTerbanyak, nil},
+		{"trus duitnya berapa?", Konteks{}, NiatNilai, nil},
 		{"kamu bisa apa", Konteks{}, NiatBantuan, nil},
 		{"berat sama nilai", Konteks{}, NiatGabungan, []string{NiatBerat, NiatNilai}},
 		{"berapa transaksi berat nilai retribusi", Konteks{}, NiatRekap, nil},
