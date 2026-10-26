@@ -78,9 +78,6 @@ func SusunJawaban(p Pemahaman, k Konteks, rows []models.TransaksiRow, tarif floa
 	return j
 }
 
-// jawabanPercakapan diisi tahap B-15.
-func jawabanPercakapan(p Pemahaman, username string) string { return pilihGaya("tidak_dikenali", p) }
-
 func (k Konteks) keJSON() models.KonteksChat {
 	kj := models.KonteksChat{Metrik: k.Metrik, Gaya: k.Gaya}
 	if k.Niat != "" {

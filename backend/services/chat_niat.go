@@ -176,9 +176,6 @@ func niatData(c pencocok) (string, []string) {
 	return NiatGabungan, metrik
 }
 
-// niatPercakapan diisi tahap B-15 (P1–P10). Sebelum itu, pesan percakapan tidak dikenali.
-func niatPercakapan(c pencocok, tokens []string) string { return "" }
-
 var namaBulan = map[string]time.Month{"januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
 	"juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12}
 
