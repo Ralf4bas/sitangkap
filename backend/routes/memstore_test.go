@@ -1,17 +1,23 @@
-package main
+package routes
 
 import (
 	"context"
 	"errors"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
+	"testing"
 	"time"
+
+	"sitangkap/backend/models"
+	"sitangkap/backend/repository"
 )
 
-// memStore adalah Store palsu di memori, khusus tes. Perilakunya meniru mysqlStore.
+// memStore adalah Store palsu di memori, khusus tes. Perilakunya meniru repository.MySQLStore.
 type memStore struct {
 	mu        sync.Mutex
-	users     []UserWithHash
+	users     []models.UserWithHash
 	transaksi []memTransaksi
 	nextID    int64
 	pingErr   error
@@ -19,7 +25,7 @@ type memStore struct {
 }
 
 type memTransaksi struct {
-	TransaksiInput
+	models.TransaksiInput
 	ID         int64
 	DibuatOleh int64
 	DibuatPada time.Time
@@ -34,9 +40,9 @@ const (
 // newMemStore membuat store dengan dua akun demo dan tanpa transaksi.
 func newMemStore() *memStore {
 	return &memStore{
-		users: []UserWithHash{
-			{User: User{ID: 1, Username: "petugas01", Nama: "Petugas Contoh", Role: "petugas"}, PasswordHash: hashPetugas123, Aktif: true},
-			{User: User{ID: 2, Username: "dinas01", Nama: "Dinas Contoh", Role: "dinas"}, PasswordHash: hashDinas123, Aktif: true},
+		users: []models.UserWithHash{
+			{User: models.User{ID: 1, Username: "petugas01", Nama: "Petugas Contoh", Role: "petugas"}, PasswordHash: hashPetugas123, Aktif: true},
+			{User: models.User{ID: 2, Username: "dinas01", Nama: "Dinas Contoh", Role: "dinas"}, PasswordHash: hashDinas123, Aktif: true},
 		},
 		nextID: 1,
 		now:    func() time.Time { return time.Date(2026, 10, 22, 1, 15, 0, 0, time.UTC) },
@@ -45,7 +51,7 @@ func newMemStore() *memStore {
 
 // tambah memasukkan transaksi langsung (tanpa validasi), untuk menyiapkan data tes.
 func (s *memStore) tambah(nama, ikan string, beratCenti, harga int64, tanggal string) int64 {
-	id, err := s.CreateTransaksi(context.Background(), TransaksiInput{
+	id, err := s.CreateTransaksi(context.Background(), models.TransaksiInput{
 		NamaNelayan: nama, JenisIkan: ikan, BeratCenti: beratCenti, HargaPerKg: harga, Tanggal: tanggal,
 	}, 1)
 	if err != nil {
@@ -65,7 +71,7 @@ func (s *memStore) isiContohKontrak() {
 
 func (s *memStore) Ping(ctx context.Context) error { return s.pingErr }
 
-func (s *memStore) FindUserByUsername(ctx context.Context, username string) (UserWithHash, error) {
+func (s *memStore) FindUserByUsername(ctx context.Context, username string) (models.UserWithHash, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, u := range s.users {
@@ -73,10 +79,10 @@ func (s *memStore) FindUserByUsername(ctx context.Context, username string) (Use
 			return u, nil
 		}
 	}
-	return UserWithHash{}, ErrNotFound
+	return models.UserWithHash{}, repository.ErrNotFound
 }
 
-func (s *memStore) FindActiveUserByID(ctx context.Context, id int64) (User, error) {
+func (s *memStore) FindActiveUserByID(ctx context.Context, id int64) (models.User, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, u := range s.users {
@@ -84,10 +90,10 @@ func (s *memStore) FindActiveUserByID(ctx context.Context, id int64) (User, erro
 			return u.User, nil
 		}
 	}
-	return User{}, ErrNotFound
+	return models.User{}, repository.ErrNotFound
 }
 
-func (s *memStore) keBaris(t memTransaksi) TransaksiRow {
+func (s *memStore) keBaris(t memTransaksi) models.TransaksiRow {
 	tanggal, err := time.Parse("2006-01-02", t.Tanggal)
 	if err != nil {
 		panic(err)
@@ -98,16 +104,16 @@ func (s *memStore) keBaris(t memTransaksi) TransaksiRow {
 			username = u.Username
 		}
 	}
-	return TransaksiRow{
+	return models.TransaksiRow{
 		ID: t.ID, NamaNelayan: t.NamaNelayan, JenisIkan: t.JenisIkan, BeratCenti: t.BeratCenti,
 		HargaPerKg: t.HargaPerKg, Tanggal: tanggal, DibuatOleh: username, DibuatPada: t.DibuatPada,
 	}
 }
 
-func (s *memStore) ListTransaksi(ctx context.Context, dari, sampai string) ([]TransaksiRow, error) {
+func (s *memStore) ListTransaksi(ctx context.Context, dari, sampai string) ([]models.TransaksiRow, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	hasil := make([]TransaksiRow, 0)
+	hasil := make([]models.TransaksiRow, 0)
 	for _, t := range s.transaksi {
 		if dari != "" && (t.Tanggal < dari || t.Tanggal > sampai) {
 			continue
@@ -132,17 +138,17 @@ func (s *memStore) cari(id int64) int {
 	return -1
 }
 
-func (s *memStore) GetTransaksi(ctx context.Context, id int64) (TransaksiRow, error) {
+func (s *memStore) GetTransaksi(ctx context.Context, id int64) (models.TransaksiRow, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	i := s.cari(id)
 	if i < 0 {
-		return TransaksiRow{}, ErrNotFound
+		return models.TransaksiRow{}, repository.ErrNotFound
 	}
 	return s.keBaris(s.transaksi[i]), nil
 }
 
-func (s *memStore) CreateTransaksi(ctx context.Context, in TransaksiInput, userID int64) (int64, error) {
+func (s *memStore) CreateTransaksi(ctx context.Context, in models.TransaksiInput, userID int64) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	id := s.nextID
@@ -151,12 +157,12 @@ func (s *memStore) CreateTransaksi(ctx context.Context, in TransaksiInput, userI
 	return id, nil
 }
 
-func (s *memStore) UpdateTransaksi(ctx context.Context, id int64, in TransaksiInput) error {
+func (s *memStore) UpdateTransaksi(ctx context.Context, id int64, in models.TransaksiInput) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	i := s.cari(id)
 	if i < 0 {
-		return ErrNotFound
+		return repository.ErrNotFound
 	}
 	s.transaksi[i].TransaksiInput = in
 	return nil
@@ -167,7 +173,7 @@ func (s *memStore) DeleteTransaksi(ctx context.Context, id int64) error {
 	defer s.mu.Unlock()
 	i := s.cari(id)
 	if i < 0 {
-		return ErrNotFound
+		return repository.ErrNotFound
 	}
 	s.transaksi = append(s.transaksi[:i], s.transaksi[i+1:]...)
 	return nil
@@ -175,8 +181,32 @@ func (s *memStore) DeleteTransaksi(ctx context.Context, id int64) error {
 
 var errPingGagal = errors.New("ping gagal")
 
-// Memastikan kedua implementasi memenuhi interface Store.
-var (
-	_ Store = (*memStore)(nil)
-	_ Store = (*mysqlStore)(nil)
-)
+var _ repository.Store = (*memStore)(nil)
+
+func TestMemStoreUrutanDanNotFound(t *testing.T) {
+	s := newMemStore()
+	s.isiContohKontrak()
+	ctx := context.Background()
+
+	rows, err := s.ListTransaksi(ctx, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, r := range rows {
+		ids = append(ids, strconv.FormatInt(r.ID, 10))
+	}
+	if strings.Join(ids, ",") != "3,2,1,5,4" {
+		t.Fatalf("ids = %v, mau 3,2,1,5,4", ids)
+	}
+	rentang, _ := s.ListTransaksi(ctx, "2026-10-21", "2026-10-21")
+	if len(rentang) != 2 {
+		t.Errorf("rentang 21 Okt = %d baris, mau 2", len(rentang))
+	}
+	if _, err := s.GetTransaksi(ctx, 99); !errors.Is(err, repository.ErrNotFound) {
+		t.Errorf("GetTransaksi(99) err = %v", err)
+	}
+	if err := s.DeleteTransaksi(ctx, 99); !errors.Is(err, repository.ErrNotFound) {
+		t.Errorf("DeleteTransaksi(99) err = %v", err)
+	}
+}

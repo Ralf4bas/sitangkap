@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -33,7 +33,7 @@ func TestLoadDotEnvTidakMenimpaEnvironment(t *testing.T) {
 	os.Unsetenv("SITANGKAP_UJI_B")
 	t.Cleanup(func() { os.Unsetenv("SITANGKAP_UJI_B") })
 
-	if err := loadDotEnv(path); err != nil {
+	if err := LoadDotEnv(path); err != nil {
 		t.Fatal(err)
 	}
 	if got := os.Getenv("SITANGKAP_UJI_A"); got != "dari_env" {
@@ -45,7 +45,7 @@ func TestLoadDotEnvTidakMenimpaEnvironment(t *testing.T) {
 }
 
 func TestLoadDotEnvFileTidakAda(t *testing.T) {
-	if err := loadDotEnv(filepath.Join(t.TempDir(), "tidak-ada.env")); err != nil {
+	if err := LoadDotEnv(filepath.Join(t.TempDir(), "tidak-ada.env")); err != nil {
 		t.Fatalf("file tidak ada harus diabaikan, dapat %v", err)
 	}
 }
@@ -53,7 +53,7 @@ func TestLoadDotEnvFileTidakAda(t *testing.T) {
 func TestLoadConfigDefault(t *testing.T) {
 	kosongkanEnv(t)
 	t.Setenv("DB_PASSWORD", "rahasia")
-	cfg, err := loadConfig()
+	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestLoadConfigMenolakNilaiSalah(t *testing.T) {
 	t.Setenv("SESSION_TTL_HOURS", "0")
 	t.Setenv("COOKIE_SECURE", "mungkin")
 	t.Setenv("PORT", "abc")
-	_, err := loadConfig()
+	_, err := Load()
 	if err == nil {
 		t.Fatal("harus error")
 	}

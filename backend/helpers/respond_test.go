@@ -1,4 +1,4 @@
-package main
+package helpers
 
 import (
 	"net/http"
@@ -9,7 +9,7 @@ import (
 
 func TestWriteErrorTanpaFields(t *testing.T) {
 	rec := httptest.NewRecorder()
-	notFound(rec)
+	NotFound(rec)
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d", rec.Code)
 	}
@@ -24,7 +24,7 @@ func TestWriteErrorTanpaFields(t *testing.T) {
 
 func TestWriteErrorDenganFields(t *testing.T) {
 	rec := httptest.NewRecorder()
-	validationError(rec, map[string]string{"berat_kg": "Berat harus lebih dari 0."})
+	ValidationError(rec, map[string]string{"berat_kg": "Berat harus lebih dari 0."})
 	want := `{"error":{"code":"VALIDATION_ERROR","message":"Data yang dikirim belum benar.","fields":{"berat_kg":"Berat harus lebih dari 0."}}}`
 	if rec.Code != http.StatusUnprocessableEntity || strings.TrimSpace(rec.Body.String()) != want {
 		t.Errorf("status %d body %s", rec.Code, rec.Body.String())
@@ -33,7 +33,7 @@ func TestWriteErrorDenganFields(t *testing.T) {
 
 func TestWriteDataSliceKosong(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeData(rec, http.StatusOK, make([]int, 0))
+	WriteData(rec, http.StatusOK, make([]int, 0))
 	if got := strings.TrimSpace(rec.Body.String()); got != `{"data":[]}` {
 		t.Errorf("body = %s", got)
 	}
@@ -49,7 +49,7 @@ func TestDecodeBody(t *testing.T) {
 		{"JSON rusak", `{"username":`, false},
 		{"kosong", ``, false},
 		{"data tambahan", `{"username":"a"} {}`, false},
-		{"lebih dari 10 KB", `{"username":"` + strings.Repeat("a", maxBodyBytes) + `"}`, false},
+		{"lebih dari 10 KB", `{"username":"` + strings.Repeat("a", MaxBodyBytes) + `"}`, false},
 	}
 	for _, k := range kasus {
 		t.Run(k.nama, func(t *testing.T) {
@@ -58,7 +58,7 @@ func TestDecodeBody(t *testing.T) {
 			var dst struct {
 				Username string `json:"username"`
 			}
-			if got := decodeBody(rec, req, &dst); got != k.ok {
+			if got := DecodeBody(rec, req, &dst); got != k.ok {
 				t.Fatalf("decodeBody = %v, mau %v", got, k.ok)
 			}
 			if !k.ok && (rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "BAD_REQUEST")) {

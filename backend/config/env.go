@@ -1,4 +1,5 @@
-package main
+// Package config membaca konfigurasi dari .env dan environment (kontrak API bagian 5).
+package config
 
 import (
 	"bufio"
@@ -12,7 +13,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-// Config berisi seluruh konfigurasi dari environment (kontrak API bagian 5).
+// Config berisi seluruh konfigurasi aplikasi.
 type Config struct {
 	Port         string
 	DBHost       string
@@ -27,9 +28,9 @@ type Config struct {
 	StaticDir    string
 }
 
-// loadDotEnv adalah pembaca .env minimal. Format: KEY=VALUE, baris kosong dan '#' diabaikan.
+// LoadDotEnv adalah pembaca .env minimal. Format: KEY=VALUE, baris kosong dan '#' diabaikan.
 // Variabel yang sudah ada di environment tidak ditimpa, supaya systemd bisa memakai cara yang sama.
-func loadDotEnv(path string) error {
+func LoadDotEnv(path string) error {
 	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -64,8 +65,8 @@ func getenv(key, def string) string {
 	return def
 }
 
-// loadConfig membaca dan memvalidasi konfigurasi. Semua kesalahan dilaporkan sekaligus.
-func loadConfig() (Config, error) {
+// Load membaca dan memvalidasi konfigurasi. Semua kesalahan dilaporkan sekaligus.
+func Load() (Config, error) {
 	cfg := Config{
 		Port:       getenv("PORT", "3000"),
 		DBHost:     getenv("DB_HOST", "127.0.0.1"),

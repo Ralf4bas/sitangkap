@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"net/http"
@@ -7,10 +7,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"sitangkap/backend/helpers"
+	"sitangkap/backend/middlewares"
+	"sitangkap/backend/models"
 )
 
 type daftarJSON struct {
-	Data []TransaksiJSON `json:"data"`
+	Data []models.TransaksiJSON `json:"data"`
 	Meta struct {
 		Jumlah         int     `json:"jumlah"`
 		Dari           *string `json:"dari"`
@@ -20,7 +24,7 @@ type daftarJSON struct {
 }
 
 type satuJSON struct {
-	Data TransaksiJSON `json:"data"`
+	Data models.TransaksiJSON `json:"data"`
 }
 
 const bodyValid = `{"nama_nelayan":"Pak Roni","jenis_ikan":"Cakalang","berat_kg":120.5,"harga_per_kg":28000,"tanggal":"2026-10-22"}`
@@ -80,7 +84,7 @@ func TestT07TigaFieldSalahSekaligus(t *testing.T) {
 	c := u.login("petugas01", "petugas123")
 	e := u.do(http.MethodPost, "/api/transaksi",
 		`{"nama_nelayan":"","jenis_ikan":"Tuna","berat_kg":-1,"harga_per_kg":28000,"tanggal":"2026-10-23"}`, c).
-		harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", msgValidation)
+		harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", helpers.MsgValidation)
 	want := map[string]string{
 		"nama_nelayan": "Nama nelayan wajib diisi.",
 		"berat_kg":     "Berat harus lebih dari 0.",
@@ -108,13 +112,13 @@ func TestT08TipeSalahTetap422(t *testing.T) {
 	}
 	for _, k := range kasus {
 		e := u.do(http.MethodPost, "/api/transaksi", k.body, c).
-			harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", msgValidation)
+			harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", helpers.MsgValidation)
 		if e.Error.Fields[k.field] != k.pesan {
 			t.Errorf("fields[%s] = %q, mau %q", k.field, e.Error.Fields[k.field], k.pesan)
 		}
 	}
 	// JSON rusak tetap 400.
-	u.do(http.MethodPost, "/api/transaksi", `{"nama_nelayan":`, c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", msgBadRequest)
+	u.do(http.MethodPost, "/api/transaksi", `{"nama_nelayan":`, c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", helpers.MsgBadRequest)
 }
 
 func TestT09UbahValid(t *testing.T) {
@@ -139,14 +143,14 @@ func TestT09UbahValid(t *testing.T) {
 func TestT10IdTidakAdaDanBukanAngka(t *testing.T) {
 	u := newUji(t)
 	c := u.login("petugas01", "petugas123")
-	u.do(http.MethodPut, "/api/transaksi/9999", bodyValid, c).harusError(t, http.StatusNotFound, "NOT_FOUND", msgNotFound)
-	u.do(http.MethodDelete, "/api/transaksi/9999", "", c).harusError(t, http.StatusNotFound, "NOT_FOUND", msgNotFound)
+	u.do(http.MethodPut, "/api/transaksi/9999", bodyValid, c).harusError(t, http.StatusNotFound, "NOT_FOUND", helpers.MsgNotFound)
+	u.do(http.MethodDelete, "/api/transaksi/9999", "", c).harusError(t, http.StatusNotFound, "NOT_FOUND", helpers.MsgNotFound)
 	for _, id := range []string{"abc", "0", "-1", "1.5"} {
-		u.do(http.MethodPut, "/api/transaksi/"+id, bodyValid, c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", msgBadRequest)
-		u.do(http.MethodDelete, "/api/transaksi/"+id, "", c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", msgBadRequest)
+		u.do(http.MethodPut, "/api/transaksi/"+id, bodyValid, c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", helpers.MsgBadRequest)
+		u.do(http.MethodDelete, "/api/transaksi/"+id, "", c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", helpers.MsgBadRequest)
 	}
 	// Urutan kontrak: 422 dicek sebelum 404.
-	u.do(http.MethodPut, "/api/transaksi/9999", `{}`, c).harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", msgValidation)
+	u.do(http.MethodPut, "/api/transaksi/9999", `{}`, c).harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", helpers.MsgValidation)
 }
 
 func TestT11HapusLaluUbah(t *testing.T) {
@@ -157,7 +161,7 @@ func TestT11HapusLaluUbah(t *testing.T) {
 	if res.Code != http.StatusNoContent || res.Body.Len() != 0 {
 		t.Fatalf("hapus: %d %q", res.Code, res.Body.String())
 	}
-	u.do(http.MethodPut, "/api/transaksi/2", bodyValid, c).harusError(t, http.StatusNotFound, "NOT_FOUND", msgNotFound)
+	u.do(http.MethodPut, "/api/transaksi/2", bodyValid, c).harusError(t, http.StatusNotFound, "NOT_FOUND", helpers.MsgNotFound)
 }
 
 // ---------- T-13, T-14: rekap dan rentang ----------
@@ -171,10 +175,10 @@ func TestT13Rekap(t *testing.T) {
 	for _, path := range []string{"/api/rekap?dari=2026-10-01&sampai=2026-10-22", "/api/rekap"} {
 		res := u.do(http.MethodGet, path, "", c)
 		var r struct {
-			Data RekapJSON `json:"data"`
+			Data models.RekapJSON `json:"data"`
 		}
 		res.json(t, &r)
-		want := RekapJSON{Dari: "2026-10-01", Sampai: "2026-10-22", JumlahTransaksi: 5, TotalBeratKg: 370.75,
+		want := models.RekapJSON{Dari: "2026-10-01", Sampai: "2026-10-22", JumlahTransaksi: 5, TotalBeratKg: 370.75,
 			TotalNilai: 11577000, TotalRetribusi: 347310, TarifRetribusi: 0.03}
 		if res.Code != http.StatusOK || r.Data != want {
 			t.Errorf("%s: %d %+v", path, res.Code, r.Data)
@@ -182,7 +186,7 @@ func TestT13Rekap(t *testing.T) {
 	}
 
 	var kosong struct {
-		Data RekapJSON `json:"data"`
+		Data models.RekapJSON `json:"data"`
 	}
 	u.do(http.MethodGet, "/api/rekap?dari=2026-01-01&sampai=2026-01-31", "", c).json(t, &kosong)
 	if kosong.Data.JumlahTransaksi != 0 || kosong.Data.TotalNilai != 0 || kosong.Data.TotalBeratKg != 0 {
@@ -194,8 +198,8 @@ func TestT14RentangSalah(t *testing.T) {
 	u := newUji(t)
 	c := u.login("dinas01", "dinas123")
 	for _, q := range []string{"dari=2026-10-01", "dari=2026-10-22&sampai=2026-10-01", "dari=22-10-2026&sampai=2026-10-22"} {
-		u.do(http.MethodGet, "/api/transaksi?"+q, "", c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", msgBadRequest)
-		u.do(http.MethodGet, "/api/rekap?"+q, "", c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", msgBadRequest)
+		u.do(http.MethodGet, "/api/transaksi?"+q, "", c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", helpers.MsgBadRequest)
+		u.do(http.MethodGet, "/api/rekap?"+q, "", c).harusError(t, http.StatusBadRequest, "BAD_REQUEST", helpers.MsgBadRequest)
 	}
 	var d daftarJSON
 	u.store.isiContohKontrak()
@@ -228,14 +232,14 @@ func TestT16Peran(t *testing.T) {
 	dinas := u.login("dinas01", "dinas123")
 	petugas := u.login("petugas01", "petugas123")
 
-	u.do(http.MethodPost, "/api/transaksi", bodyValid, dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", msgForbidden)
-	u.do(http.MethodPut, "/api/transaksi/1", bodyValid, dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", msgForbidden)
-	u.do(http.MethodDelete, "/api/transaksi/1", "", dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", msgForbidden)
-	u.do(http.MethodGet, "/api/rekap", "", petugas).harusError(t, http.StatusForbidden, "FORBIDDEN", msgForbidden)
+	u.do(http.MethodPost, "/api/transaksi", bodyValid, dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", helpers.MsgForbidden)
+	u.do(http.MethodPut, "/api/transaksi/1", bodyValid, dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", helpers.MsgForbidden)
+	u.do(http.MethodDelete, "/api/transaksi/1", "", dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", helpers.MsgForbidden)
+	u.do(http.MethodGet, "/api/rekap", "", petugas).harusError(t, http.StatusForbidden, "FORBIDDEN", helpers.MsgForbidden)
 
 	// Urutan kontrak: 401 sebelum 403, 403 sebelum 400.
-	u.do(http.MethodPost, "/api/transaksi", bodyValid, nil).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", msgUnauthorized)
-	u.do(http.MethodPut, "/api/transaksi/abc", `{`, dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", msgForbidden)
+	u.do(http.MethodPost, "/api/transaksi", bodyValid, nil).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", helpers.MsgUnauthorized)
+	u.do(http.MethodPut, "/api/transaksi/abc", `{`, dinas).harusError(t, http.StatusForbidden, "FORBIDDEN", helpers.MsgForbidden)
 
 	// Dinas tetap boleh membaca daftar.
 	if res := u.do(http.MethodGet, "/api/transaksi", "", dinas); res.Code != http.StatusOK {
@@ -248,14 +252,14 @@ func TestT16Peran(t *testing.T) {
 func TestMethodTidakTerdaftar404(t *testing.T) {
 	u := newUji(t)
 	c := u.login("petugas01", "petugas123")
-	u.do(http.MethodPatch, "/api/transaksi/1", bodyValid, c).harusError(t, http.StatusNotFound, "NOT_FOUND", msgNotFound)
+	u.do(http.MethodPatch, "/api/transaksi/1", bodyValid, c).harusError(t, http.StatusNotFound, "NOT_FOUND", helpers.MsgNotFound)
 }
 
 func TestPanicJadi500(t *testing.T) {
 	u := newUji(t)
-	h := u.app.recoverPanic(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { panic("uji") }))
+	h := middlewares.RecoverPanic(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { panic("uji") }))
 	u.h = h
-	u.do(http.MethodGet, "/api/me", "", nil).harusError(t, http.StatusInternalServerError, "INTERNAL_ERROR", msgInternal)
+	u.do(http.MethodGet, "/api/me", "", nil).harusError(t, http.StatusInternalServerError, "INTERNAL_ERROR", helpers.MsgInternal)
 }
 
 func TestFileStatis(t *testing.T) {
@@ -271,8 +275,8 @@ func TestFileStatis(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "_astro", "app.js"), []byte("js"), 0o644)
 
 	u := newUji(t)
-	u.app.cfg.StaticDir = dir
-	u.h = u.app.routes()
+
+	u.h = SetupRoutes(u.handler, u.auth, dir)
 
 	if res := u.do(http.MethodGet, "/", "", nil); res.Code != http.StatusOK || res.Body.String() != "halaman login" {
 		t.Errorf("/: %d %q", res.Code, res.Body.String())
@@ -284,7 +288,7 @@ func TestFileStatis(t *testing.T) {
 		t.Errorf("daftar isi folder harus 404, dapat %d %q", res.Code, res.Body.String())
 	}
 	// /api dan /health tetap ditangani backend, bukan file statis.
-	u.do(http.MethodGet, "/api/tidak-ada", "", nil).harusError(t, http.StatusNotFound, "NOT_FOUND", msgNotFound)
+	u.do(http.MethodGet, "/api/tidak-ada", "", nil).harusError(t, http.StatusNotFound, "NOT_FOUND", helpers.MsgNotFound)
 	if res := u.do(http.MethodGet, "/health", "", nil); res.Code != http.StatusOK {
 		t.Errorf("/health: %d", res.Code)
 	}

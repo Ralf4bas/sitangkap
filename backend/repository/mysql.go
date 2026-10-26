@@ -1,4 +1,4 @@
-package main
+package repository
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+
+	"sitangkap/backend/models"
 )
 
 // Query dari db/queries.md, persis, dengan placeholder ?.
@@ -26,8 +28,13 @@ const (
 	q09 = `SELECT 1`
 )
 
-type mysqlStore struct {
+// MySQLStore adalah implementasi Store dengan MySQL/MariaDB.
+type MySQLStore struct {
 	db *sql.DB
+}
+
+func NewMySQLStore(db *sql.DB) *MySQLStore {
+	return &MySQLStore{db: db}
 }
 
 // beratKeCenti mengubah DECIMAL(10,2) dari database ("120.50") ke 0,01 kg (12050).
@@ -48,9 +55,9 @@ type pemindai interface {
 	Scan(dest ...any) error
 }
 
-func pindaiTransaksi(p pemindai) (TransaksiRow, error) {
+func pindaiTransaksi(p pemindai) (models.TransaksiRow, error) {
 	var (
-		row   TransaksiRow
+		row   models.TransaksiRow
 		berat string
 	)
 	err := p.Scan(&row.ID, &row.NamaNelayan, &row.JenisIkan, &berat, &row.HargaPerKg, &row.Tanggal, &row.DibuatOleh, &row.DibuatPada)
@@ -61,13 +68,13 @@ func pindaiTransaksi(p pemindai) (TransaksiRow, error) {
 	return row, err
 }
 
-func (s *mysqlStore) Ping(ctx context.Context) error {
+func (s *MySQLStore) Ping(ctx context.Context) error {
 	var satu int
 	return s.db.QueryRowContext(ctx, q09).Scan(&satu)
 }
 
-func (s *mysqlStore) FindUserByUsername(ctx context.Context, username string) (UserWithHash, error) {
-	var u UserWithHash
+func (s *MySQLStore) FindUserByUsername(ctx context.Context, username string) (models.UserWithHash, error) {
+	var u models.UserWithHash
 	err := s.db.QueryRowContext(ctx, q01, username).Scan(&u.ID, &u.Username, &u.Nama, &u.PasswordHash, &u.Role, &u.Aktif)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, ErrNotFound
@@ -75,8 +82,8 @@ func (s *mysqlStore) FindUserByUsername(ctx context.Context, username string) (U
 	return u, err
 }
 
-func (s *mysqlStore) FindActiveUserByID(ctx context.Context, id int64) (User, error) {
-	var u User
+func (s *MySQLStore) FindActiveUserByID(ctx context.Context, id int64) (models.User, error) {
+	var u models.User
 	err := s.db.QueryRowContext(ctx, q02, id).Scan(&u.ID, &u.Username, &u.Nama, &u.Role)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, ErrNotFound
@@ -84,7 +91,7 @@ func (s *mysqlStore) FindActiveUserByID(ctx context.Context, id int64) (User, er
 	return u, err
 }
 
-func (s *mysqlStore) ListTransaksi(ctx context.Context, dari, sampai string) ([]TransaksiRow, error) {
+func (s *MySQLStore) ListTransaksi(ctx context.Context, dari, sampai string) ([]models.TransaksiRow, error) {
 	var (
 		rows *sql.Rows
 		err  error
@@ -99,7 +106,7 @@ func (s *mysqlStore) ListTransaksi(ctx context.Context, dari, sampai string) ([]
 	}
 	defer rows.Close()
 
-	hasil := make([]TransaksiRow, 0)
+	hasil := make([]models.TransaksiRow, 0)
 	for rows.Next() {
 		row, err := pindaiTransaksi(rows)
 		if err != nil {
@@ -110,7 +117,7 @@ func (s *mysqlStore) ListTransaksi(ctx context.Context, dari, sampai string) ([]
 	return hasil, rows.Err()
 }
 
-func (s *mysqlStore) GetTransaksi(ctx context.Context, id int64) (TransaksiRow, error) {
+func (s *MySQLStore) GetTransaksi(ctx context.Context, id int64) (models.TransaksiRow, error) {
 	row, err := pindaiTransaksi(s.db.QueryRowContext(ctx, q05, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return row, ErrNotFound
@@ -118,7 +125,7 @@ func (s *mysqlStore) GetTransaksi(ctx context.Context, id int64) (TransaksiRow, 
 	return row, err
 }
 
-func (s *mysqlStore) CreateTransaksi(ctx context.Context, in TransaksiInput, userID int64) (int64, error) {
+func (s *MySQLStore) CreateTransaksi(ctx context.Context, in models.TransaksiInput, userID int64) (int64, error) {
 	res, err := s.db.ExecContext(ctx, q06, in.NamaNelayan, in.JenisIkan, centiKeDecimal(in.BeratCenti), in.HargaPerKg, in.Tanggal, userID)
 	if err != nil {
 		return 0, err
@@ -126,7 +133,7 @@ func (s *mysqlStore) CreateTransaksi(ctx context.Context, in TransaksiInput, use
 	return res.LastInsertId()
 }
 
-func (s *mysqlStore) UpdateTransaksi(ctx context.Context, id int64, in TransaksiInput) error {
+func (s *MySQLStore) UpdateTransaksi(ctx context.Context, id int64, in models.TransaksiInput) error {
 	res, err := s.db.ExecContext(ctx, q07, in.NamaNelayan, in.JenisIkan, centiKeDecimal(in.BeratCenti), in.HargaPerKg, in.Tanggal, id)
 	if err != nil {
 		return err
@@ -134,7 +141,7 @@ func (s *mysqlStore) UpdateTransaksi(ctx context.Context, id int64, in Transaksi
 	return cekBarisTerkena(res)
 }
 
-func (s *mysqlStore) DeleteTransaksi(ctx context.Context, id int64) error {
+func (s *MySQLStore) DeleteTransaksi(ctx context.Context, id int64) error {
 	res, err := s.db.ExecContext(ctx, q08, id)
 	if err != nil {
 		return err
@@ -154,3 +161,5 @@ func cekBarisTerkena(res sql.Result) error {
 	}
 	return nil
 }
+
+var _ Store = (*MySQLStore)(nil)

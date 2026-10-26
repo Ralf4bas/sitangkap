@@ -1,10 +1,13 @@
-package main
+package repository
 
 import (
 	"context"
 	"errors"
 	"os"
 	"testing"
+
+	"sitangkap/backend/config"
+	"sitangkap/backend/models"
 )
 
 // TestMySQLStoreIntegrasi hanya berjalan bila SITANGKAP_UJI_MYSQL=1, terhadap database dari backend/.env
@@ -14,19 +17,19 @@ func TestMySQLStoreIntegrasi(t *testing.T) {
 	if os.Getenv("SITANGKAP_UJI_MYSQL") != "1" {
 		t.Skip("set SITANGKAP_UJI_MYSQL=1 untuk menguji terhadap MySQL lokal")
 	}
-	if err := loadDotEnv(".env"); err != nil {
+	if err := config.LoadDotEnv("../.env"); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := loadConfig()
+	cfg, err := config.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := openDB(cfg)
+	db, err := config.OpenDB(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	s := &mysqlStore{db: db}
+	s := NewMySQLStore(db)
 	ctx := context.Background()
 
 	if err := s.Ping(ctx); err != nil {
@@ -55,7 +58,7 @@ func TestMySQLStoreIntegrasi(t *testing.T) {
 		t.Errorf("Q-04 Oktober = %d baris, %d centi; mau 5 baris, 37075", len(rows), total)
 	}
 
-	in := TransaksiInput{NamaNelayan: "Uji Integrasi", JenisIkan: "Tuna", BeratCenti: 150000, HargaPerKg: 1000, Tanggal: "2026-10-20"}
+	in := models.TransaksiInput{NamaNelayan: "Uji Integrasi", JenisIkan: "Tuna", BeratCenti: 150000, HargaPerKg: 1000, Tanggal: "2026-10-20"}
 	id, err := s.CreateTransaksi(ctx, in, u.ID)
 	if err != nil {
 		t.Fatal(err)
