@@ -104,15 +104,15 @@ func PahamiPesan(pesan string, k Konteks, today time.Time) Pemahaman {
 	}
 
 	p.Niat, p.Metrik = niatData(c)
+	if p.Niat == "" {
+		p.Niat = niatPercakapan(c, tokens)
+	}
 	if p.Niat == "" && adaPola {
 		// N6: pertanyaan lanjutan seperti "kalau kemarin?" memakai niat dari konteks.
 		p.Niat, p.Metrik = NiatRekap, nil
 		if k.Niat != "" {
 			p.Niat, p.Metrik = k.Niat, k.Metrik
 		}
-	}
-	if p.Niat == "" {
-		p.Niat = niatPercakapan(c, tokens)
 	}
 	if niatRentang[p.Niat] {
 		switch {
@@ -140,12 +140,12 @@ func (c pencocok) ada(frasa ...string) bool {
 	return false
 }
 
-// niatData menjalankan N1–N5.
+// niatData menjalankan N1–N5. Urutan lengkap: N1–N5, percakapan P1–P10, lalu N6.
 func niatData(c pencocok) (string, []string) {
 	switch {
 	case c.ada("bantuan", "help", "bisa apa", "contoh", "menu"):
 		return NiatBantuan, nil
-	case c.ada("ikan") && c.ada("terbanyak", "paling banyak", "terlaris"):
+	case c.ada("ikan") && c.ada("terbanyak", "paling banyak", "terlaris", "laris"):
 		return NiatIkanTerbanyak, nil
 	case c.ada("terakhir", "terbaru"):
 		return NiatTransaksiTerakhir, nil
@@ -182,7 +182,7 @@ func niatPercakapan(c pencocok, tokens []string) string { return "" }
 var namaBulan = map[string]time.Month{"januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
 	"juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12}
 
-// polaRentang menjalankan R1–R11. adaPola = salah satu pola ditemukan; valid = false untuk tanggal tidak nyata
+// polaRentang menjalankan R1–R11 (nama bulan R3 didahulukan dari frasa hari/minggu/bulan/tahun). adaPola = salah satu pola ditemukan; valid = false untuk tanggal tidak nyata
 // atau dua tanggal terbalik.
 func polaRentang(tokens []string, today time.Time) (dari, sampai string, adaPola, valid bool) {
 	var tanggal []string
@@ -215,6 +215,20 @@ func polaRentang(tokens []string, today time.Time) (dari, sampai string, adaPola
 	hari := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 	senin := hari.AddDate(0, 0, -((int(hari.Weekday()) + 6) % 7))
 	awal := time.Date(y, m, 1, 0, 0, 0, 0, time.UTC)
+	for i, t := range tokens {
+		bln, ok := namaBulan[t]
+		if !ok {
+			continue
+		}
+		tahun := y
+		if i+1 < len(tokens) && len(tokens[i+1]) == 4 {
+			if n, err := strconv.Atoi(tokens[i+1]); err == nil {
+				tahun = n
+			}
+		}
+		a := time.Date(tahun, bln, 1, 0, 0, 0, 0, time.UTC)
+		return f(a, a.AddDate(0, 1, -1))
+	}
 	switch {
 	case c.ada("hari ini"):
 		return f(hari, hari)
@@ -232,20 +246,6 @@ func polaRentang(tokens []string, today time.Time) (dari, sampai string, adaPola
 		return f(time.Date(y-1, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(y-1, 12, 31, 0, 0, 0, 0, time.UTC))
 	case c.ada("tahun ini"):
 		return f(time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC), hari)
-	}
-	for i, t := range tokens {
-		bln, ok := namaBulan[t]
-		if !ok {
-			continue
-		}
-		tahun := y
-		if i+1 < len(tokens) && len(tokens[i+1]) == 4 {
-			if n, err := strconv.Atoi(tokens[i+1]); err == nil {
-				tahun = n
-			}
-		}
-		a := time.Date(tahun, bln, 1, 0, 0, 0, 0, time.UTC)
-		return f(a, a.AddDate(0, 1, -1))
 	}
 	return "", "", false, true
 }
