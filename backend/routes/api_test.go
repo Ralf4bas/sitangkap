@@ -1,4 +1,4 @@
-package main
+package routes
 
 import (
 	"encoding/json"
@@ -10,6 +10,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"sitangkap/backend/config"
+	"sitangkap/backend/handlers"
+	"sitangkap/backend/helpers"
+	"sitangkap/backend/middlewares"
+	"sitangkap/backend/models"
+	"sitangkap/backend/services"
 )
 
 // TestMain membuang log request supaya output go test hanya berisi hasil tes.
@@ -27,10 +34,11 @@ func TestMain(m *testing.M) {
 var waktuUji = time.Date(2026, 10, 22, 2, 0, 0, 0, time.UTC)
 
 type uji struct {
-	t     *testing.T
-	app   *App
-	store *memStore
-	h     http.Handler
+	t       *testing.T
+	handler *handlers.Handler
+	auth    middlewares.Auth
+	store   *memStore
+	h       http.Handler
 }
 
 func newUji(t *testing.T) *uji {
@@ -39,10 +47,13 @@ func newUji(t *testing.T) *uji {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := Config{Tarif: 0.03, Location: wita, SessionTTL: 8 * time.Hour}
+	cfg := config.Config{Tarif: 0.03, Location: wita, SessionTTL: 8 * time.Hour}
 	store := newMemStore()
-	app := newApp(store, cfg, func() time.Time { return waktuUji })
-	return &uji{t: t, app: app, store: store, h: app.routes()}
+	now := func() time.Time { return waktuUji }
+	sessions := services.NewSessions(cfg.SessionTTL, now)
+	h := handlers.New(store, sessions, cfg, now)
+	auth := middlewares.Auth{Store: store, Sessions: sessions}
+	return &uji{t: t, handler: h, auth: auth, store: store, h: SetupRoutes(h, auth, "")}
 }
 
 type respons struct {
@@ -80,7 +91,7 @@ func (u *uji) login(username, password string) *http.Cookie {
 func (r respons) cookie(t *testing.T) *http.Cookie {
 	t.Helper()
 	for _, c := range r.Result().Cookies() {
-		if c.Name == namaCookie {
+		if c.Name == services.NamaCookie {
 			return c
 		}
 	}
@@ -150,8 +161,8 @@ func TestT02LoginGagalPesanSama(t *testing.T) {
 	u := newUji(t)
 	salah := u.do(http.MethodPost, "/api/login", `{"username":"petugas01","password":"salah"}`, nil)
 	tidakAda := u.do(http.MethodPost, "/api/login", `{"username":"tidakada","password":"petugas123"}`, nil)
-	salah.harusError(t, http.StatusUnauthorized, "INVALID_CREDENTIALS", msgInvalidCredentials)
-	tidakAda.harusError(t, http.StatusUnauthorized, "INVALID_CREDENTIALS", msgInvalidCredentials)
+	salah.harusError(t, http.StatusUnauthorized, "INVALID_CREDENTIALS", helpers.MsgInvalidCredentials)
+	tidakAda.harusError(t, http.StatusUnauthorized, "INVALID_CREDENTIALS", helpers.MsgInvalidCredentials)
 	if salah.Body.String() != tidakAda.Body.String() {
 		t.Errorf("body berbeda: %s vs %s", salah.Body.String(), tidakAda.Body.String())
 	}
@@ -164,24 +175,24 @@ func TestLoginAkunNonaktif(t *testing.T) {
 	u := newUji(t)
 	u.store.users[0].Aktif = false
 	u.do(http.MethodPost, "/api/login", `{"username":"petugas01","password":"petugas123"}`, nil).
-		harusError(t, http.StatusUnauthorized, "INVALID_CREDENTIALS", msgInvalidCredentials)
+		harusError(t, http.StatusUnauthorized, "INVALID_CREDENTIALS", helpers.MsgInvalidCredentials)
 }
 
 func TestLoginValidasiDanJSONRusak(t *testing.T) {
 	u := newUji(t)
 	e := u.do(http.MethodPost, "/api/login", `{"username":"  ","password":""}`, nil).
-		harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", msgValidation)
+		harusError(t, http.StatusUnprocessableEntity, "VALIDATION_ERROR", helpers.MsgValidation)
 	if e.Error.Fields["username"] != "Username wajib diisi." || e.Error.Fields["password"] != "Password wajib diisi." {
 		t.Errorf("fields = %v", e.Error.Fields)
 	}
-	u.do(http.MethodPost, "/api/login", `{"username":`, nil).harusError(t, http.StatusBadRequest, "BAD_REQUEST", msgBadRequest)
+	u.do(http.MethodPost, "/api/login", `{"username":`, nil).harusError(t, http.StatusBadRequest, "BAD_REQUEST", helpers.MsgBadRequest)
 }
 
 func TestT03MeTanpaCookie(t *testing.T) {
 	u := newUji(t)
-	u.do(http.MethodGet, "/api/me", "", nil).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", msgUnauthorized)
-	palsu := &http.Cookie{Name: namaCookie, Value: strings.Repeat("0", 64)}
-	u.do(http.MethodGet, "/api/me", "", palsu).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", msgUnauthorized)
+	u.do(http.MethodGet, "/api/me", "", nil).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", helpers.MsgUnauthorized)
+	palsu := &http.Cookie{Name: services.NamaCookie, Value: strings.Repeat("0", 64)}
+	u.do(http.MethodGet, "/api/me", "", palsu).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", helpers.MsgUnauthorized)
 }
 
 func TestT04LogoutLaluMe(t *testing.T) {
@@ -190,7 +201,7 @@ func TestT04LogoutLaluMe(t *testing.T) {
 
 	me := u.do(http.MethodGet, "/api/me", "", c)
 	var body struct {
-		Data User `json:"data"`
+		Data models.User `json:"data"`
 	}
 	me.json(t, &body)
 	if me.Code != http.StatusOK || body.Data.Username != "dinas01" || body.Data.Role != "dinas" {
@@ -204,7 +215,7 @@ func TestT04LogoutLaluMe(t *testing.T) {
 	if sc := out.Header().Get("Set-Cookie"); !strings.Contains(sc, "Max-Age=0") || !strings.Contains(sc, "sitangkap_session=;") {
 		t.Errorf("Set-Cookie logout = %q", sc)
 	}
-	u.do(http.MethodGet, "/api/me", "", c).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", msgUnauthorized)
+	u.do(http.MethodGet, "/api/me", "", c).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", helpers.MsgUnauthorized)
 
 	// Logout tanpa sesi tetap 204.
 	if res := u.do(http.MethodPost, "/api/logout", "", nil); res.Code != http.StatusNoContent {
@@ -216,14 +227,15 @@ func TestSesiUserDinonaktifkan(t *testing.T) {
 	u := newUji(t)
 	c := u.login("petugas01", "petugas123")
 	u.store.users[0].Aktif = false
-	u.do(http.MethodGet, "/api/me", "", c).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", msgUnauthorized)
+	u.do(http.MethodGet, "/api/me", "", c).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", helpers.MsgUnauthorized)
 	u.store.users[0].Aktif = true
-	u.do(http.MethodGet, "/api/me", "", c).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", msgUnauthorized)
+	u.do(http.MethodGet, "/api/me", "", c).harusError(t, http.StatusUnauthorized, "UNAUTHORIZED", helpers.MsgUnauthorized)
 }
 
 func TestCookieSecure(t *testing.T) {
 	u := newUji(t)
-	u.app.cfg.CookieSecure = true
+	u.handler.Cfg.CookieSecure = true
+	u.h = SetupRoutes(u.handler, u.auth, "")
 	res := u.do(http.MethodPost, "/api/login", `{"username":"petugas01","password":"petugas123"}`, nil)
 	if !strings.Contains(res.Header().Get("Set-Cookie"), "Secure") {
 		t.Errorf("Set-Cookie = %q, mau ada Secure", res.Header().Get("Set-Cookie"))
@@ -232,5 +244,5 @@ func TestCookieSecure(t *testing.T) {
 
 func TestPathAPITidakDikenal(t *testing.T) {
 	u := newUji(t)
-	u.do(http.MethodGet, "/api/tidak-ada", "", nil).harusError(t, http.StatusNotFound, "NOT_FOUND", msgNotFound)
+	u.do(http.MethodGet, "/api/tidak-ada", "", nil).harusError(t, http.StatusNotFound, "NOT_FOUND", helpers.MsgNotFound)
 }

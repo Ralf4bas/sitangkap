@@ -1,4 +1,4 @@
-package main
+package services
 
 import (
 	"encoding/json"
@@ -7,30 +7,33 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"sitangkap/backend/models"
 )
 
 // Pesan validasi persis dari kontrak API (POST /api/transaksi).
 const (
-	msgNamaWajib       = "Nama nelayan wajib diisi."
-	msgNamaPanjang     = "Nama nelayan paling banyak 100 karakter."
-	msgIkanWajib       = "Jenis ikan wajib diisi."
-	msgIkanPanjang     = "Jenis ikan paling banyak 60 karakter."
-	msgBeratWajib      = "Berat wajib diisi dengan angka."
-	msgBeratPositif    = "Berat harus lebih dari 0."
-	msgBeratMaks       = "Berat paling besar 100000 kg."
-	msgBeratDesimal    = "Berat paling banyak 2 angka di belakang koma."
-	msgHargaWajib      = "Harga per kg wajib diisi dengan bilangan bulat."
-	msgHargaPositif    = "Harga per kg harus lebih dari 0."
-	msgHargaMaks       = "Harga per kg paling besar Rp 100.000.000."
-	msgTanggalFormat   = "Tanggal harus berformat YYYY-MM-DD dan valid."
-	msgTanggalMelewati = "Tanggal tidak boleh melewati hari ini."
+	MsgNamaWajib       = "Nama nelayan wajib diisi."
+	MsgNamaPanjang     = "Nama nelayan paling banyak 100 karakter."
+	MsgIkanWajib       = "Jenis ikan wajib diisi."
+	MsgIkanPanjang     = "Jenis ikan paling banyak 60 karakter."
+	MsgBeratWajib      = "Berat wajib diisi dengan angka."
+	MsgBeratPositif    = "Berat harus lebih dari 0."
+	MsgBeratMaks       = "Berat paling besar 100000 kg."
+	MsgBeratDesimal    = "Berat paling banyak 2 angka di belakang koma."
+	MsgHargaWajib      = "Harga per kg wajib diisi dengan bilangan bulat."
+	MsgHargaPositif    = "Harga per kg harus lebih dari 0."
+	MsgHargaMaks       = "Harga per kg paling besar Rp 100.000.000."
+	MsgTanggalFormat   = "Tanggal harus berformat YYYY-MM-DD dan valid."
+	MsgTanggalMelewati = "Tanggal tidak boleh melewati hari ini."
 )
 
-const formatTanggal = "2006-01-02"
+// FormatTanggal adalah format tanggal kontrak API (YYYY-MM-DD).
+const FormatTanggal = "2006-01-02"
 
-// transaksiBody di-decode per field ke json.RawMessage, supaya tipe yang salah (misal berat berupa
+// TransaksiBody di-decode per field ke json.RawMessage, supaya tipe yang salah (misal berat berupa
 // string) menjadi pesan validasi 422 per field, bukan 400.
-type transaksiBody struct {
+type TransaksiBody struct {
 	NamaNelayan json.RawMessage `json:"nama_nelayan"`
 	JenisIkan   json.RawMessage `json:"jenis_ikan"`
 	BeratKg     json.RawMessage `json:"berat_kg"`
@@ -60,15 +63,15 @@ func parseTeks(raw json.RawMessage, maks int, msgWajib, msgPanjang string) (stri
 func parseBerat(raw json.RawMessage) (int64, string) {
 	var f float64
 	if isMissing(raw) || json.Unmarshal(raw, &f) != nil {
-		return 0, msgBeratWajib
+		return 0, MsgBeratWajib
 	}
 	switch {
 	case f <= 0:
-		return 0, msgBeratPositif
+		return 0, MsgBeratPositif
 	case f > 100000:
-		return 0, msgBeratMaks
+		return 0, MsgBeratMaks
 	case math.Abs(f*100-math.Round(f*100)) > 1e-6:
-		return 0, msgBeratDesimal
+		return 0, MsgBeratDesimal
 	}
 	return int64(math.Round(f * 100)), ""
 }
@@ -77,13 +80,13 @@ func parseBerat(raw json.RawMessage) (int64, string) {
 func parseHarga(raw json.RawMessage) (int64, string) {
 	var h int64
 	if isMissing(raw) || json.Unmarshal(raw, &h) != nil {
-		return 0, msgHargaWajib
+		return 0, MsgHargaWajib
 	}
 	switch {
 	case h <= 0:
-		return 0, msgHargaPositif
+		return 0, MsgHargaPositif
 	case h > 100000000:
-		return 0, msgHargaMaks
+		return 0, MsgHargaMaks
 	}
 	return h, ""
 }
@@ -92,28 +95,28 @@ func parseHarga(raw json.RawMessage) (int64, string) {
 func parseTanggalInput(raw json.RawMessage, today time.Time, loc *time.Location) (string, string) {
 	var s string
 	if isMissing(raw) || json.Unmarshal(raw, &s) != nil {
-		return "", msgTanggalFormat
+		return "", MsgTanggalFormat
 	}
-	t, err := time.ParseInLocation(formatTanggal, s, loc)
-	if err != nil || t.Format(formatTanggal) != s {
-		return "", msgTanggalFormat
+	t, err := time.ParseInLocation(FormatTanggal, s, loc)
+	if err != nil || t.Format(FormatTanggal) != s {
+		return "", MsgTanggalFormat
 	}
-	if s > today.In(loc).Format(formatTanggal) {
-		return "", msgTanggalMelewati
+	if s > today.In(loc).Format(FormatTanggal) {
+		return "", MsgTanggalMelewati
 	}
 	return s, ""
 }
 
-// parseTransaksi mengembalikan input bersih, atau map field -> pesan berisi SEMUA field yang salah.
-func parseTransaksi(b transaksiBody, today time.Time, loc *time.Location) (TransaksiInput, map[string]string) {
-	var in TransaksiInput
+// ParseTransaksi mengembalikan input bersih, atau map field -> pesan berisi SEMUA field yang salah.
+func ParseTransaksi(b TransaksiBody, today time.Time, loc *time.Location) (models.TransaksiInput, map[string]string) {
+	var in models.TransaksiInput
 	fields := map[string]string{}
 	var msg string
 
-	if in.NamaNelayan, msg = parseTeks(b.NamaNelayan, 100, msgNamaWajib, msgNamaPanjang); msg != "" {
+	if in.NamaNelayan, msg = parseTeks(b.NamaNelayan, 100, MsgNamaWajib, MsgNamaPanjang); msg != "" {
 		fields["nama_nelayan"] = msg
 	}
-	if in.JenisIkan, msg = parseTeks(b.JenisIkan, 60, msgIkanWajib, msgIkanPanjang); msg != "" {
+	if in.JenisIkan, msg = parseTeks(b.JenisIkan, 60, MsgIkanWajib, MsgIkanPanjang); msg != "" {
 		fields["jenis_ikan"] = msg
 	}
 	if in.BeratCenti, msg = parseBerat(b.BeratKg); msg != "" {
@@ -126,14 +129,14 @@ func parseTransaksi(b transaksiBody, today time.Time, loc *time.Location) (Trans
 		fields["tanggal"] = msg
 	}
 	if len(fields) > 0 {
-		return TransaksiInput{}, fields
+		return models.TransaksiInput{}, fields
 	}
 	return in, nil
 }
 
-// parseRentang membaca query dari dan sampai (BR-07). Keduanya kosong -> ("", "", true).
+// ParseRentang membaca query dari dan sampai (BR-07). Keduanya kosong -> ("", "", true).
 // Hanya salah satu, format salah, atau dari > sampai -> ok = false (400 BAD_REQUEST).
-func parseRentang(q url.Values) (dari, sampai string, ok bool) {
+func ParseRentang(q url.Values) (dari, sampai string, ok bool) {
 	dari, sampai = q.Get("dari"), q.Get("sampai")
 	if dari == "" && sampai == "" {
 		return "", "", true
@@ -145,6 +148,6 @@ func parseRentang(q url.Values) (dari, sampai string, ok bool) {
 }
 
 func tanggalValid(s string) bool {
-	t, err := time.Parse(formatTanggal, s)
-	return err == nil && t.Format(formatTanggal) == s
+	t, err := time.Parse(FormatTanggal, s)
+	return err == nil && t.Format(FormatTanggal) == s
 }
