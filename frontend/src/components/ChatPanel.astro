@@ -1,0 +1,111 @@
+---
+// FE-12 · Panel "Tanya Si Tangkap" (FR-012). Logika di scripts/chat.ts.
+---
+
+<section class="chat" aria-label="Asisten Si Tangkap">
+  <button type="button" id="chat-buka" class="btn btn-sekunder" aria-expanded="false" aria-controls="chat-panel">
+    Tanya Si Tangkap
+  </button>
+
+  <div id="chat-panel" class="chat-panel" hidden>
+    <p class="chat-petunjuk">
+      Tanyakan rekap, jumlah transaksi, berat, nilai, atau retribusi. Boleh santai, misalnya "brp trx hari ini?" lalu
+      "kalau kemarin?".
+    </p>
+    <div id="chat-daftar" class="chat-daftar" aria-live="polite"></div>
+    <form id="chat-form" class="chat-form" novalidate>
+      <div class="field chat-field">
+        <label for="chat-input">Pertanyaan</label>
+        <input id="chat-input" type="text" maxlength="200" autocomplete="off" />
+        <p class="field-error" id="chat-galat" role="alert" hidden></p>
+      </div>
+      <button type="submit" id="chat-kirim" class="btn btn-utama">Kirim</button>
+    </form>
+  </div>
+</section>
+
+<style>
+  .chat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .chat-panel:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-self: stretch;
+    padding: 16px;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-md);
+    background: var(--c-surface);
+  }
+  .chat-petunjuk {
+    margin: 0;
+    font-size: 13px;
+    color: var(--c-muted);
+  }
+  .chat-daftar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .chat-daftar:empty {
+    display: none;
+  }
+  /* Gelembung dibuat lewat JavaScript, jadi tidak membawa atribut scope Astro. */
+  .chat-daftar :global(.chat-pesan) {
+    max-width: 85%;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .chat-daftar :global(.chat-saya) {
+    align-self: flex-end;
+    background: var(--c-brand);
+    color: #fff;
+  }
+  .chat-daftar :global(.chat-bot) {
+    align-self: flex-start;
+    background: var(--c-bg);
+  }
+  .chat-daftar :global(.chat-mengetik) {
+    color: var(--c-muted);
+    font-style: italic;
+  }
+  .chat-daftar :global(.chat-gagal) {
+    background: var(--c-danger-bg);
+    color: var(--c-danger);
+  }
+  .chat-form {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .chat-field {
+    flex: 1;
+    min-width: 0;
+  }
+  /* Tombol sejajar dengan kotak input (label 13px × 1.5 + jarak 6px). */
+  .chat-form .btn {
+    margin-top: 25.5px;
+  }
+  @media (max-width: 480px) {
+    .chat-form {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .chat-form .btn {
+      margin-top: 0;
+    }
+  }
+</style>
+
+<script>
+  import '../scripts/chat.ts';
+</script>
