@@ -284,45 +284,52 @@ Jalankan dengan backend sungguhan (`PUBLIC_MOCK=0`) dan database yang baru di-se
 
 > **FE-11 dan FE-12 dikerjakan tmthy, Magen me-review dan meng-approve PR-nya.** Daftar file yang boleh diubah ada di `AGENTS.md` bagian 1.
 
-Kerjakan setelah PR kontrak AI-01 digabung. Bentuk data ada di kontrak bagian "Jawaban chat" dan `POST /api/chat`.
+Kerjakan setelah PR kontrak AI-01 digabung. Bentuk data ada di kontrak bagian "Jawaban chat", "Konteks chat", dan `POST /api/chat`.
 
 ```ts
-export interface JawabanChat {
-  jawaban: string; dikenali: boolean; niat: string | null; dari: string | null; sampai: string | null;
+export type Metrik = 'jumlah' | 'berat' | 'nilai' | 'retribusi';
+export interface KonteksChat {
+  niat: string | null; metrik: Metrik[] | null; dari: string | null; sampai: string | null;
+  gaya: 'santai' | 'formal' | 'netral';
 }
-// chat(pesan: string): Promise<JawabanChat>
+export interface JawabanChat {
+  jawaban: string; dikenali: boolean; niat: string | null; metrik: Metrik[] | null;
+  dari: string | null; sampai: string | null; konteks: KonteksChat;
+}
+// chat(pesan: string, konteks?: KonteksChat | null): Promise<JawabanChat>
 ```
 
-- `chat` di `api.ts` mengikuti aturan `api.ts` yang sudah ada (ApiError, gagal jaringan, tanpa redirect).
+- `chat` di `api.ts` mengikuti aturan `api.ts` yang sudah ada (ApiError, gagal jaringan, tanpa redirect). `konteks` hanya dikirim bila ada.
 - Mock (`PUBLIC_MOCK=1`) **tidak** meniru aturan chat, karena aturannya tinggal di backend. Mock cukup:
   - Membalas 422 dengan `fields.pesan` persis kontrak untuk pesan kosong atau lebih dari 200 karakter.
   - Membalas 401 bila belum login.
-  - Selain itu membalas templat "Tidak dikenali" (`dikenali: false`, `niat`, `dari`, `sampai` bernilai `null`).
+  - Selain itu membalas templat "tidak dikenali" variasi 0 gaya Biasa (`dikenali: false`, `niat`, `metrik`, `dari`, `sampai` bernilai `null`) dan mengembalikan konteks yang dikirim, atau konteks kosong dengan `gaya: "netral"`.
 
-## FE-12 · Panel "Tanya SiTangkap" (Figma 30)
+## FE-12 · Panel "Tanya Si Tangkap" (Figma 30)
 
 Komponen `components/ChatPanel.astro` dengan logika di `scripts/chat.ts`, dipasang di `petugas.astro` dan `dinas.astro`. Kalau Figma 30 belum ada, ikuti tabel ini dan token desain yang sudah ada.
 
 | Bagian | Isi dan perilaku |
 | --- | --- |
-| Pembuka | Tombol sekunder "Tanya SiTangkap" di bawah judul halaman. Klik → panel terbuka di bawahnya; klik lagi → tertutup |
-| Petunjuk awal | Teks abu-abu: `Tanyakan rekap, jumlah transaksi, berat, nilai, atau retribusi. Contoh: "rekap bulan ini".` |
+| Pembuka | Tombol sekunder "Tanya Si Tangkap" di bawah judul halaman. Klik → panel terbuka di bawahnya; klik lagi → tertutup (`aria-expanded`) |
+| Petunjuk awal | Teks abu-abu: `Tanyakan rekap, jumlah transaksi, berat, nilai, atau retribusi. Boleh santai, misalnya "brp trx hari ini?" lalu "kalau kemarin?".` |
 | Daftar pesan | Pertanyaan pengguna rata kanan, jawaban rata kiri. Wadah memakai `aria-live="polite"`. Isi dimasukkan dengan `textContent`, **tidak pernah** `innerHTML` |
-| Input | `<label for>` "Pertanyaan", `<input type="text" maxlength="200">`, tombol "Kirim". Enter juga mengirim |
-| Saat menunggu | Tombol "Kirim" nonaktif, muncul teks "Sedang mencari jawaban…" di daftar |
+| Input | `<label for>` "Pertanyaan", `<input type="text" maxlength="200">`, tombol "Kirim". Enter juga mengirim. Setelah terkirim, input dikosongkan dan tetap fokus |
+| Konteks | `konteks` dari respons terakhir disimpan di variabel modul (memori halaman), lalu dikirim bersama pertanyaan berikutnya. Hilang saat halaman dimuat ulang. **Jangan** simpan di `localStorage` atau `sessionStorage` |
+| Saat menunggu | Tombol "Kirim" nonaktif, muncul teks "Si Tangkap sedang mengetik…" di daftar |
 | 422 | Pesan `fields.pesan` merah di bawah input (`role="alert"`). Pertanyaan tidak masuk daftar |
 | 401 | Arahkan ke halaman login, sama dengan penanganan 401 di halaman itu |
-| Gagal jaringan atau 500 | `message` dari `ApiError` tampil sebagai jawaban berwarna merah |
-| Riwayat | Hanya di memori halaman. Hilang saat halaman dimuat ulang. **Jangan** simpan di `localStorage` atau `sessionStorage` |
+| Gagal jaringan atau 500 | `message` dari `ApiError` tampil sebagai jawaban berwarna merah. Konteks tidak berubah |
 | 360 px | Panel selebar konten, input dan tombol bertumpuk bila tidak muat |
 
-Cek manual tambahan (backend sungguhan, database baru di-seed):
+Cek manual tambahan (backend sungguhan, database baru di-seed, hari ini sesuai tanggal laptop):
 
 | ID | Langkah | Harapan |
 | --- | --- | --- |
-| F-14 | Dinas, tanya `rekap dari 01/10/2026 sampai 22/10/2026` | Jawaban persis baris pertama tabel contoh di kontrak; angkanya sama dengan kartu di F-08 |
-| F-15 | Petugas, tanya `transaksi terakhir`, lalu `cuaca besok bagaimana` | Jawaban persis tabel contoh di kontrak (Ibu Merry, Julung-julung …), lalu jawaban "Maaf, saya belum mengerti …" |
+| F-14 | Dinas, tanya `rekap dari 01/10/2026 sampai 22/10/2026` | Jawaban persis baris pertama tabel "Contoh satu pertanyaan" di kontrak; angkanya sama dengan kartu di F-08 |
+| F-15 | Petugas, tanya `transaksi terakhir`, lalu `cuaca besok bagaimana` | Jawaban persis tabel contoh di kontrak (Ibu Merry, Julung-julung …), lalu templat "tidak dikenali" |
 | F-16 | Kirim pertanyaan kosong; lalu ulangi F-14 di lebar 360 px | "Pertanyaan wajib diisi." di bawah input; panel tetap terbaca tanpa scroll horizontal |
+| F-17 | Uji ala Turing: satu orang yang belum melihat daftar contoh mengobrol 20 kalimat bebas (sapaan, slang, salah ketik, pertanyaan lanjutan seperti "kalau kemarin?"), lalu menilai kewajaran tiap jawaban 1–5 | Minimal 80% jawaban relevan, rata-rata kewajaran minimal 4, dan tidak ada angka yang berbeda dengan halaman rekap. Hasil dan transkripnya ditempel di PR FE-12 |
 
 ## Koordinasi
 
@@ -339,7 +346,7 @@ Cek manual tambahan (backend sungguhan, database baru di-seed):
 - [ ] Mode mock dan mode backend sungguhan sama-sama jalan
 - [ ] Tidak ada `innerHTML` untuk data, tidak ada `localStorage`
 - [ ] Tidak ada library UI atau CDN; `package-lock.json` ter-commit
-- [ ] F-01 s.d. F-13 lulus (dan F-14 s.d. F-16 setelah FE-11, FE-12)
+- [ ] F-01 s.d. F-13 lulus (dan F-14 s.d. F-17 setelah FE-11, FE-12)
 - [ ] `npm run build` lulus
 
 ## Prompt siap pakai untuk AI agent

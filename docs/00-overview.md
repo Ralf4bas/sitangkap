@@ -21,7 +21,7 @@
 | Backend | Rafli | [`roles/backend-rafli.md`](roles/backend-rafli.md) | `backend/` |
 | Database | abas | [`roles/database-abas.md`](roles/database-abas.md) | `db/` |
 
-Pengecualian: fitur asisten chat (FR-012) dikerjakan tmthy di file `backend/` dan `frontend/` yang terdaftar di `AGENTS.md` bagian 1, dengan review dari Rafli (backend) dan Magen (frontend).
+Pengecualian: fitur asisten chat (FR-012, tahap B-13 s.d. B-15, FE-11, FE-12) dikerjakan tmthy di file `backend/` dan `frontend/` yang terdaftar di `AGENTS.md` bagian 1, dengan review dari Rafli (backend) dan Magen (frontend).
 
 Aturan kepemilikan: **hanya pemilik folder yang mengubah isi foldernya.** Kalau butuh perubahan di folder orang lain, buat issue atau minta lewat pull request yang ditinjau pemiliknya. Semua perubahan masuk ke `dev` lewat pull request, dan `dev` dirilis ke `main` oleh PM, lihat [`03-git-workflow.md`](03-git-workflow.md).
 
@@ -74,7 +74,7 @@ Batasan analisis: disusun dari dokumen daring tanpa observasi lapangan; sebagian
 | FR-009 | Dinas dapat memfilter daftar transaksi berdasarkan rentang tanggal | Dinas | Must |
 | FR-010 | Dinas dapat memilih rentang cepat: Hari ini, Bulan ini, Tahun ini | Dinas | Should |
 | FR-011 | Sistem menyediakan endpoint health untuk pemeriksaan otomatis (dipakai Jenkins) | Sistem | Should |
-| FR-012 | Pengguna dapat bertanya ke asisten chat dengan kalimat sederhana Bahasa Indonesia (misalnya "rekap bulan ini" atau "berapa transaksi hari ini"), lalu mendapat jawaban berisi angka dari data transaksi | Petugas, Dinas | Could |
+| FR-012 | Pengguna dapat bercakap dengan asisten chat "Si Tangkap" dalam Bahasa Indonesia sehari-hari, termasuk slang, salah ketik, dan pertanyaan lanjutan (misalnya "brp trx hari ini?" lalu "kalau kemarin?"), dan mendapat jawaban berisi angka dari data transaksi | Petugas, Dinas | Could |
 
 **Won't have (versi ini):** persetujuan manajer, riwayat perubahan, banyak TPI, ekspor Excel/PDF, pembayaran, kelola akun lewat aplikasi.
 
@@ -104,9 +104,9 @@ Batasan analisis: disusun dari dokumen daring tanpa observasi lapangan; sebagian
 | BR-07 | Rentang tanggal: `dari` ≤ `sampai`, keduanya inklusif. |
 | BR-08 | Hapus transaksi wajib dikonfirmasi di UI dan bersifat permanen. |
 | BR-09 | `nama_nelayan` 1 sampai 100 karakter, `jenis_ikan` 1 sampai 60 karakter, setelah spasi di awal dan akhir dibuang. |
-| BR-10 | Asisten chat bekerja dengan aturan kata kunci (mirip AIML), tanpa layanan AI luar dan tanpa dependensi baru. Aturan, urutan, dan templat jawabannya tertulis di `01-api-contract.md` (`POST /api/chat`). |
+| BR-10 | Asisten chat bekerja dengan aturan kata kunci (mirip AIML), tanpa layanan AI luar dan tanpa dependensi baru. Aturan, urutan, kamus slang, percakapan ringan, dan templat jawabannya tertulis di `01-api-contract.md` (`POST /api/chat`). Jawaban bervariasi tetapi deterministik: pertanyaan yang sama selalu mendapat jawaban yang sama. |
 | BR-11 | Asisten chat hanya membaca data. Angka di jawaban dihitung dengan aturan yang sama dengan rekap (BR-05), sehingga selalu sama dengan rekap untuk rentang yang sama. |
-| BR-12 | Pertanyaan 1 sampai 200 karakter setelah trim. Riwayat percakapan tidak disimpan di server maupun di database, dan isi pertanyaan tidak dicatat ke log. |
+| BR-12 | Pertanyaan 1 sampai 200 karakter setelah trim. Riwayat percakapan tidak disimpan di server maupun di database, dan isi pertanyaan tidak dicatat ke log. Pertanyaan lanjutan memakai `konteks` yang disimpan frontend di memori halaman dan dikirim bersama setiap pertanyaan. |
 
 ## 8. Use case
 
@@ -156,8 +156,8 @@ Kolom Test berisi ID tes backend dari [`roles/backend-rafli.md`](roles/backend-r
 | FR-009 | UC-03 | `GET /api/transaksi?dari=&sampai=` | 20 Dinas | T-14, F-09 |
 | FR-010 | UC-07 | (frontend saja) | 20 Dinas | F-10 |
 | FR-011 | — | `GET /health` | — | T-15 |
-| FR-012 | UC-08 | `POST /api/chat` | 30 Asisten chat (belum dibuat) | T-17 s.d. T-22, F-14 s.d. F-16 |
-| BR-10, BR-11, BR-12 | UC-08 | `POST /api/chat` | 30 | T-17 s.d. T-22 |
+| FR-012 | UC-08 | `POST /api/chat` | 30 Asisten chat (belum dibuat) | T-17 s.d. T-25, F-14 s.d. F-17 |
+| BR-10, BR-11, BR-12 | UC-08 | `POST /api/chat` | 30 | T-17 s.d. T-25 |
 | BR-01 | UC-04, 05, 06 | semua endpoint tulis | — | T-16 |
 | BR-02, BR-09 | UC-04, UC-05 | `POST`/`PUT /api/transaksi` (422) | 11, 12 | T-07, T-08, F-11 |
 | NFR-006 | — | — | 01 Login | F-12 |
