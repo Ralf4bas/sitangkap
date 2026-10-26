@@ -25,6 +25,7 @@ func SetupRoutes(h *handlers.Handler, auth middlewares.Auth, staticDir string) h
 	mux.HandleFunc("PUT /api/transaksi/{id}", auth.Require(petugas, h.UpdateTransaksiHandler))
 	mux.HandleFunc("DELETE /api/transaksi/{id}", auth.Require(petugas, h.DeleteTransaksiHandler))
 	mux.HandleFunc("GET /api/rekap", auth.Require(dinas, h.RekapHandler))
+	mux.HandleFunc("POST /api/chat", auth.Require(semua, h.ChatHandler))
 	// Path /api/ lain, termasuk method yang tidak terdaftar (misal PATCH), dijawab 404 NOT_FOUND.
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		helpers.NotFound(w)

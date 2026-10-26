@@ -69,6 +69,14 @@ func (s *memStore) isiContohKontrak() {
 	s.tambah("Pak Roni", "Cakalang", 9500, 27500, "2026-10-21")
 }
 
+// isiSeed memasukkan 8 baris db/seed.sql: 5 contoh kontrak lalu 3 baris bulan sebelumnya.
+func (s *memStore) isiSeed() {
+	s.isiContohKontrak()
+	s.tambah("Pak Yance", "Tuna", 6000, 63000, "2026-09-15")
+	s.tambah("Ibu Merry", "Layang", 4000, 18000, "2026-09-10")
+	s.tambah("Pak Hendrik", "Cakalang", 11000, 26000, "2026-08-05")
+}
+
 func (s *memStore) Ping(ctx context.Context) error { return s.pingErr }
 
 func (s *memStore) FindUserByUsername(ctx context.Context, username string) (models.UserWithHash, error) {
