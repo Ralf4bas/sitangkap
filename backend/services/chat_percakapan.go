@@ -21,8 +21,13 @@ var aturanPercakapan = []struct {
 	{"sapaan", []string{"halo", "hai", "hi", "permisi", "assalamualaikum", "selamat pagi", "selamat siang", "selamat sore", "selamat malam"}},
 }
 
-// niatPercakapan menjalankan P1–P10. Tidak cocok -> "" (tidak dikenali).
-func niatPercakapan(c pencocok, tokens []string) string {
+func init() {
+	niatPercakapan = cocokPercakapan
+	jawabanPercakapan = susunPercakapan
+}
+
+// cocokPercakapan menjalankan P1–P10. Tidak cocok -> "" (tidak dikenali).
+func cocokPercakapan(c pencocok, tokens []string) string {
 	for _, a := range aturanPercakapan {
 		if a.niat == "tidak" {
 			if len(tokens) > 0 && len(tokens) <= 3 && tokens[0] == "tidak" {
@@ -89,8 +94,8 @@ var templatPercakapan = map[string][2][]string{
 	},
 }
 
-// jawabanPercakapan mengisi templat niat percakapan sesuai gaya.
-func jawabanPercakapan(p Pemahaman, username string) string {
+// susunPercakapan mengisi templat niat percakapan sesuai gaya.
+func susunPercakapan(p Pemahaman, username string) string {
 	g := 0
 	if p.Gaya == GayaSantai {
 		g = 1
