@@ -418,7 +418,9 @@ Setiap token yang **persis sama** dengan kolom kiri diganti dengan kolom kanan (
 | `nilainya` | `nilai` |
 | `jumlahnya` | `jumlah` |
 | `ikannya` | `ikan` |
-| `duit` | `uang` |
+| `pendapatannya` | `pendapatan` |
+| `yg` | `yang` |
+| `duit`, `duitnya`, `uangnya` | `uang` |
 | `gmn`, `gimana` | `bagaimana` |
 | `makasih`, `makasi`, `makacih`, `mksh`, `thx`, `thanks`, `tq`, `trims`, `tengkyu` | `terima kasih` |
 | `ok`, `okay`, `okey`, `okee`, `okeh`, `sip`, `siap`, `mantap`, `mantab` | `oke` |
@@ -442,33 +444,33 @@ Hasil langkah 1, 3, dan 4 disebut **pesan akhir**, misalnya `"brp trx kmrn"` men
 | --- | --- | --- | --- |
 | R1 | Dua tanggal (`YYYY-MM-DD` atau `DD/MM/YYYY`) | tanggal pertama | tanggal kedua |
 | R2 | Satu tanggal | tanggal itu | tanggal itu |
-| R3 | `hari ini` | hari ini | hari ini |
-| R4 | `kemarin` | kemarin | kemarin |
-| R5 | `minggu lalu` | Senin minggu lalu | Minggu minggu lalu |
-| R6 | `minggu ini` | Senin minggu ini | hari ini |
-| R7 | `bulan lalu` | tanggal 1 bulan lalu | tanggal terakhir bulan lalu |
-| R8 | `bulan ini` | tanggal 1 bulan ini | hari ini |
-| R9 | `tahun lalu` | 1 Januari tahun lalu | 31 Desember tahun lalu |
-| R10 | `tahun ini` | 1 Januari tahun ini | hari ini |
-| R11 | Nama bulan (`januari` … `desember`), boleh diikuti tahun 4 angka | tanggal 1 bulan itu | tanggal terakhir bulan itu. Tanpa tahun = tahun ini |
+| R3 | Nama bulan (`januari` … `desember`), boleh diikuti tahun 4 angka. Didahulukan dari R4–R11, jadi `oktober kemarin` berarti bulan Oktober | tanggal 1 bulan itu | tanggal terakhir bulan itu. Tanpa tahun = tahun ini |
+| R4 | `hari ini` | hari ini | hari ini |
+| R5 | `kemarin` | kemarin | kemarin |
+| R6 | `minggu lalu` | Senin minggu lalu | Minggu minggu lalu |
+| R7 | `minggu ini` | Senin minggu ini | hari ini |
+| R8 | `bulan lalu` | tanggal 1 bulan lalu | tanggal terakhir bulan lalu |
+| R9 | `bulan ini` | tanggal 1 bulan ini | hari ini |
+| R10 | `tahun lalu` | 1 Januari tahun lalu | 31 Desember tahun lalu |
+| R11 | `tahun ini` | 1 Januari tahun ini | hari ini |
 | R12 | Tidak ada pola di atas | `konteks.dari` | `konteks.sampai`. Bila konteks tidak punya rentang: tanggal 1 bulan ini sampai hari ini (sama dengan default `GET /api/rekap`) |
 
 Tanggal yang ditulis tetapi tidak nyata (misalnya `2026-02-30` atau `31/04/2026`), atau tanggal pertama setelah tanggal kedua di R1, menghasilkan `dikenali: false` dengan `jawaban` "Tanggal tidak valid".
 
 #### Langkah 6 · Niat
 
-Diperiksa dari atas, yang pertama cocok yang dipakai. Satu pesan menghasilkan satu niat.
+Diperiksa berurutan: N1–N5, lalu niat percakapan P1–P10, lalu N6. Yang pertama cocok yang dipakai. Satu pesan menghasilkan satu niat.
 
 **Niat data** (memakai data transaksi):
 
 | Urutan | `niat` | Cocok bila pesan akhir mengandung | Memakai rentang? |
 | --- | --- | --- | --- |
 | N1 | `bantuan` | `bantuan`, `help`, `bisa apa`, `contoh`, `menu` | Tidak |
-| N2 | `ikan_terbanyak` | `ikan` **dan** salah satu dari `terbanyak`, `paling banyak`, `terlaris` | Ya |
+| N2 | `ikan_terbanyak` | `ikan` **dan** salah satu dari `terbanyak`, `paling banyak`, `terlaris`, `laris` | Ya |
 | N3 | `transaksi_terakhir` | `terakhir` atau `terbaru` | Tidak, selalu seluruh data (Q-03, baris pertama) |
 | N4 | metrik | Satu atau lebih metrik di bawah. Satu metrik → niat bernama metrik itu. Dua atau tiga → `gabungan` (field `metrik` berisi daftarnya). Keempatnya → `rekap` | Ya |
 | N5 | `rekap` | `rekap`, `ringkasan`, `total`, `laporan` | Ya |
-| N6 | lanjutan | Tidak ada niat N1–N5, tetapi ada pola R1–R11 | Ya. Niat (dan `metrik`) diambil dari `konteks`. Konteks tanpa niat → `rekap` |
+| N6 | lanjutan | Tidak ada niat N1–N5 maupun P1–P10, tetapi ada pola R1–R11 | Ya. Niat (dan `metrik`) diambil dari `konteks`. Konteks tanpa niat → `rekap` |
 
 Metrik untuk N4:
 
@@ -479,11 +481,11 @@ Metrik untuk N4:
 | `nilai` | `nilai`, `pendapatan`, `penjualan`, `omzet`, `uang` |
 | `retribusi` | `retribusi`, `pungutan` |
 
-**Niat percakapan** (diperiksa setelah N6, tidak memakai data):
+**Niat percakapan** (diperiksa setelah N5 dan sebelum N6, tidak memakai data):
 
 | Urutan | `niat` | Cocok bila pesan akhir mengandung |
 | --- | --- | --- |
-| P1 | `siapa_kamu` | `siapa kamu`, `kamu siapa`, `nama kamu`, `namamu`, `kamu bot`, `kamu robot`, `kamu manusia` |
+| P1 | `siapa_kamu` | `nama kamu`, `namamu`, `kamu bot`, `kamu robot`, `kamu manusia`, atau kata `kamu` **dan** `siapa` di mana pun (misalnya `kamu itu siapa ya`) |
 | P2 | `apa_kabar` | `apa kabar`, `bagaimana kabar`, `kabar kamu`, `kabarmu` |
 | P3 | `terima_kasih` | `terima kasih` |
 | P4 | `maaf` | `maaf`, `sorry`, `sori` |
@@ -495,7 +497,7 @@ Metrik untuk N4:
 | P10 | `sapaan` | `halo`, `hai`, `hi`, `permisi`, `assalamualaikum`, `selamat pagi`, `selamat siang`, `selamat sore`, `selamat malam` |
 | — | tidak dikenali | Tidak ada yang cocok |
 
-Karena niat data diperiksa lebih dulu, `"halo, rekap bulan ini"` dijawab sebagai rekap dan `"makasih, retribusi kemarin dong"` dijawab sebagai retribusi.
+Karena N1–N5 diperiksa lebih dulu, `"halo, rekap bulan ini"` dijawab sebagai rekap dan `"makasih, retribusi kemarin dong"` dijawab sebagai retribusi. Karena percakapan diperiksa sebelum N6, `"capek banget hari ini"` dijawab sebagai `capek`, bukan rekap hari ini.
 
 Angka untuk niat data yang memakai rentang dihitung dengan fungsi yang **sama** dengan `GET /api/rekap` (aturan bagian 3), sehingga jawaban chat selalu sama dengan kartu rekap untuk rentang yang sama.
 
