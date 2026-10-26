@@ -280,6 +280,50 @@ Jalankan dengan backend sungguhan (`PUBLIC_MOCK=0`) dan database yang baru di-se
 | F-12 | Tab Network di DevTools, halaman login | Total terkirim < 100 KB |
 | F-13 | Lebar layar 360 px | Tidak ada scroll horizontal di halaman (tabel boleh) |
 
+## FE-11 · API dan mock untuk chat (FR-012)
+
+> **FE-11 dan FE-12 dikerjakan tmthy, Magen me-review dan meng-approve PR-nya.** Daftar file yang boleh diubah ada di `AGENTS.md` bagian 1.
+
+Kerjakan setelah PR kontrak AI-01 digabung. Bentuk data ada di kontrak bagian "Jawaban chat" dan `POST /api/chat`.
+
+```ts
+export interface JawabanChat {
+  jawaban: string; dikenali: boolean; niat: string | null; dari: string | null; sampai: string | null;
+}
+// chat(pesan: string): Promise<JawabanChat>
+```
+
+- `chat` di `api.ts` mengikuti aturan `api.ts` yang sudah ada (ApiError, gagal jaringan, tanpa redirect).
+- Mock (`PUBLIC_MOCK=1`) **tidak** meniru aturan chat, karena aturannya tinggal di backend. Mock cukup:
+  - Membalas 422 dengan `fields.pesan` persis kontrak untuk pesan kosong atau lebih dari 200 karakter.
+  - Membalas 401 bila belum login.
+  - Selain itu membalas templat "Tidak dikenali" (`dikenali: false`, `niat`, `dari`, `sampai` bernilai `null`).
+
+## FE-12 · Panel "Tanya SiTangkap" (Figma 30)
+
+Komponen `components/ChatPanel.astro` dengan logika di `scripts/chat.ts`, dipasang di `petugas.astro` dan `dinas.astro`. Kalau Figma 30 belum ada, ikuti tabel ini dan token desain yang sudah ada.
+
+| Bagian | Isi dan perilaku |
+| --- | --- |
+| Pembuka | Tombol sekunder "Tanya SiTangkap" di bawah judul halaman. Klik → panel terbuka di bawahnya; klik lagi → tertutup |
+| Petunjuk awal | Teks abu-abu: `Tanyakan rekap, jumlah transaksi, berat, nilai, atau retribusi. Contoh: "rekap bulan ini".` |
+| Daftar pesan | Pertanyaan pengguna rata kanan, jawaban rata kiri. Wadah memakai `aria-live="polite"`. Isi dimasukkan dengan `textContent`, **tidak pernah** `innerHTML` |
+| Input | `<label for>` "Pertanyaan", `<input type="text" maxlength="200">`, tombol "Kirim". Enter juga mengirim |
+| Saat menunggu | Tombol "Kirim" nonaktif, muncul teks "Sedang mencari jawaban…" di daftar |
+| 422 | Pesan `fields.pesan` merah di bawah input (`role="alert"`). Pertanyaan tidak masuk daftar |
+| 401 | Arahkan ke halaman login, sama dengan penanganan 401 di halaman itu |
+| Gagal jaringan atau 500 | `message` dari `ApiError` tampil sebagai jawaban berwarna merah |
+| Riwayat | Hanya di memori halaman. Hilang saat halaman dimuat ulang. **Jangan** simpan di `localStorage` atau `sessionStorage` |
+| 360 px | Panel selebar konten, input dan tombol bertumpuk bila tidak muat |
+
+Cek manual tambahan (backend sungguhan, database baru di-seed):
+
+| ID | Langkah | Harapan |
+| --- | --- | --- |
+| F-14 | Dinas, tanya `rekap dari 01/10/2026 sampai 22/10/2026` | Jawaban persis baris pertama tabel contoh di kontrak; angkanya sama dengan kartu di F-08 |
+| F-15 | Petugas, tanya `transaksi terakhir`, lalu `cuaca besok bagaimana` | Jawaban persis tabel contoh di kontrak (Ibu Merry, Julung-julung …), lalu jawaban "Maaf, saya belum mengerti …" |
+| F-16 | Kirim pertanyaan kosong; lalu ulangi F-14 di lebar 360 px | "Pertanyaan wajib diisi." di bawah input; panel tetap terbaca tanpa scroll horizontal |
+
 ## Koordinasi
 
 | Kapan | Dengan siapa | Apa |
@@ -295,7 +339,7 @@ Jalankan dengan backend sungguhan (`PUBLIC_MOCK=0`) dan database yang baru di-se
 - [ ] Mode mock dan mode backend sungguhan sama-sama jalan
 - [ ] Tidak ada `innerHTML` untuk data, tidak ada `localStorage`
 - [ ] Tidak ada library UI atau CDN; `package-lock.json` ter-commit
-- [ ] F-01 s.d. F-13 lulus
+- [ ] F-01 s.d. F-13 lulus (dan F-14 s.d. F-16 setelah FE-11, FE-12)
 - [ ] `npm run build` lulus
 
 ## Prompt siap pakai untuk AI agent

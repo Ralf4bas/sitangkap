@@ -119,6 +119,25 @@ Respons daftar menambahkan `meta`:
 }
 ```
 
+### Jawaban chat
+
+```json
+{
+  "jawaban": "Ada 3 transaksi pada 22/10/2026.",
+  "dikenali": true,
+  "niat": "jumlah",
+  "dari": "2026-10-22",
+  "sampai": "2026-10-22"
+}
+```
+
+| Field | Tipe | Keterangan |
+| --- | --- | --- |
+| `jawaban` | string | Kalimat Bahasa Indonesia yang siap ditampilkan apa adanya |
+| `dikenali` | boolean | `false` bila pertanyaan tidak cocok dengan aturan mana pun atau tanggalnya tidak valid |
+| `niat` | string atau `null` | Kode niat dari tabel di `POST /api/chat`. `null` bila `dikenali = false` |
+| `dari`, `sampai` | string `YYYY-MM-DD` atau `null` | Rentang yang dipakai untuk menjawab. `null` untuk niat yang tidak memakai rentang (`sapaan`, `bantuan`, `transaksi_terakhir`) dan bila `dikenali = false` |
+
 ## 3. Aturan perhitungan (BR-05)
 
 Semua perhitungan dilakukan **di backend, di satu tempat** (fungsi `hitungNilai` dan `hitungRetribusi`). Database hanya menyimpan input. Frontend hanya menampilkan pratinjau di form (rumus sama, tarif dari `meta.tarif_retribusi` di `GET /api/transaksi`) dan selalu menampilkan angka dari API setelah disimpan.
@@ -163,6 +182,7 @@ Ringkasan:
 | PUT | `/api/transaksi/{id}` | Ya | **petugas** | FR-005 |
 | DELETE | `/api/transaksi/{id}` | Ya | **petugas** | FR-006 |
 | GET | `/api/rekap` | Ya | **dinas** | FR-008 |
+| POST | `/api/chat` | Ya | petugas, dinas | FR-012 |
 
 Urutan pemeriksaan di setiap endpoint yang butuh login: **401 dulu (sesi), lalu 403 (peran), lalu 400 (format: JSON rusak, id bukan angka, query salah), lalu 422 (validasi isi), lalu 404 (data dengan id itu tidak ada).**
 
@@ -312,6 +332,118 @@ Peran: `dinas`. Query `dari` dan `sampai` sama seperti `GET /api/transaksi`, den
 
 Frontend dinas memanggil `/api/rekap` **dan** `/api/transaksi` dengan `dari`/`sampai` yang sama.
 
+---
+
+### POST /api/chat
+
+Asisten tanya-jawab berbasis aturan, mirip AIML (FR-012, BR-10 s.d. BR-12). Backend mencocokkan kata kunci di pertanyaan, mengambil data dengan query yang sudah ada (Q-03 atau Q-04), lalu menyusun jawaban dari templat di bawah. **Tidak ada layanan AI luar, tidak ada dependensi baru, dan riwayat percakapan tidak disimpan.** Endpoint ini hanya membaca data.
+
+Peran: `petugas` dan `dinas`. Request:
+
+```json
+{ "pesan": "berapa transaksi hari ini?" }
+```
+
+| Respons | Body | Catatan |
+| --- | --- | --- |
+| `200` | `{ "data": JawabanChat }` | Juga untuk pertanyaan yang tidak dikenali (`dikenali: false`). Itu bukan error |
+| `422` | `VALIDATION_ERROR` | `fields.pesan`: `Pertanyaan wajib diisi.` (tidak ada, bukan string, atau kosong setelah trim) atau `Pertanyaan paling banyak 200 karakter.` |
+| `400`, `401` | sesuai tabel error | JSON rusak, body > 10 KB, tidak ada sesi |
+
+Isi `pesan` **tidak** dicatat ke log server (sama dengan aturan log body). Log cukup mencatat `niat`.
+
+#### Langkah 1 · Normalisasi pesan
+
+1. Trim, lalu ubah ke huruf kecil.
+2. Ganti setiap karakter selain huruf `a-z`, angka `0-9`, `/`, dan `-` dengan spasi.
+3. Rapatkan spasi berturut-turut menjadi satu.
+
+Contoh: `"Berapa  Transaksi, HARI INI?"` menjadi `"berapa transaksi hari ini"`.
+
+Kata kunci dicocokkan sebagai **kata utuh** atau **frasa utuh** (dibatasi spasi atau awal/akhir pesan), bukan potongan kata. Contoh: `kg` cocok di `"berat dalam kg"` tetapi tidak di `"kgx"`.
+
+#### Langkah 2 · Rentang tanggal
+
+"Hari ini" mengikuti `APP_TIMEZONE`. Aturan diperiksa dari atas, yang pertama cocok yang dipakai:
+
+| Urutan | Pola di pesan | `dari` | `sampai` |
+| --- | --- | --- | --- |
+| R1 | Dua tanggal (`YYYY-MM-DD` atau `DD/MM/YYYY`) | tanggal pertama | tanggal kedua |
+| R2 | Satu tanggal | tanggal itu | tanggal itu |
+| R3 | `hari ini` | hari ini | hari ini |
+| R4 | `kemarin` | kemarin | kemarin |
+| R5 | `minggu ini` | Senin minggu ini | hari ini |
+| R6 | `bulan lalu` | tanggal 1 bulan lalu | tanggal terakhir bulan lalu |
+| R7 | `bulan ini` | tanggal 1 bulan ini | hari ini |
+| R8 | `tahun ini` | 1 Januari tahun ini | hari ini |
+| R9 | Nama bulan (`januari` … `desember`), boleh diikuti tahun 4 angka | tanggal 1 bulan itu | tanggal terakhir bulan itu. Tanpa tahun = tahun ini |
+| R10 | Tidak ada pola di atas | tanggal 1 bulan ini | hari ini (sama dengan default `GET /api/rekap`) |
+
+Tanggal yang ditulis tetapi tidak nyata (misalnya `2026-02-30` atau `31/04/2026`), atau tanggal pertama setelah tanggal kedua di R1, menghasilkan `dikenali: false` dengan `jawaban` dari baris "Tanggal tidak valid" di tabel templat.
+
+#### Langkah 3 · Niat (intent)
+
+Diperiksa dari atas, yang pertama cocok yang dipakai. Satu pesan hanya menghasilkan satu niat.
+
+| Urutan | `niat` | Cocok bila pesan mengandung | Memakai rentang? |
+| --- | --- | --- | --- |
+| N1 | `bantuan` | `bantuan`, `help`, `bisa apa`, `contoh` | Tidak |
+| N2 | `ikan_terbanyak` | `ikan` **dan** salah satu dari `terbanyak`, `paling banyak`, `terlaris` | Ya |
+| N3 | `transaksi_terakhir` | `terakhir` atau `terbaru` | Tidak, selalu seluruh data (Q-03, baris pertama) |
+| N4 | `retribusi` | `retribusi` | Ya |
+| N5 | `nilai` | `nilai`, `pendapatan`, `omzet`, `uang` | Ya |
+| N6 | `berat` | `berat`, `kg`, `kilo` | Ya |
+| N7 | `jumlah` | `transaksi` **dan** salah satu dari `berapa`, `jumlah`, `banyak` | Ya |
+| N8 | `rekap` | `rekap`, `ringkasan`, `total`, `laporan`, **atau** salah satu pola R1–R9 ditemukan tanpa kata kunci niat lain | Ya |
+| N9 | `sapaan` | `halo`, `hai`, `hi`, `selamat pagi`, `selamat siang`, `selamat sore`, `selamat malam` | Tidak |
+| — | tidak dikenali | Tidak ada yang cocok | — |
+
+Angka untuk niat yang memakai rentang dihitung dengan fungsi yang **sama** dengan `GET /api/rekap` (aturan bagian 3), sehingga jawaban chat selalu sama dengan kartu rekap untuk rentang yang sama.
+
+`ikan_terbanyak`: transaksi di rentang dikelompokkan per `jenis_ikan` (persis sama, peka huruf besar/kecil), lalu dipilih kelompok dengan total `berat_kg` terbesar. Kalau seri, pilih `jenis_ikan` yang urutan abjadnya paling awal.
+
+#### Langkah 4 · Templat jawaban
+
+Format angka di jawaban sama dengan tampilan frontend:
+
+- Rupiah: `Rp 11.577.000`
+- Berat: `370,75 kg`. Tanpa desimal bila bulat (`45 kg`), satu atau dua desimal sesuai nilainya (`120,5 kg`).
+- Tanggal: `DD/MM/YYYY`
+- Persen tarif: `3` untuk 0.03, `2,85` untuk 0.0285
+
+`{periode}` berisi `pada 22/10/2026` bila `dari = sampai`, selain itu `pada 01/10/2026 sampai 22/10/2026`.
+
+| Kondisi | `jawaban` |
+| --- | --- |
+| Niat memakai rentang dan tidak ada transaksi di rentang itu | `Tidak ada transaksi {periode}.` |
+| `rekap` | `Rekap {periode}: {jumlah} transaksi, total berat {berat}, nilai {nilai}, retribusi {retribusi} (tarif {persen}%).` |
+| `jumlah` | `Ada {jumlah} transaksi {periode}.` |
+| `berat` | `Total berat ikan {periode} adalah {berat}.` |
+| `nilai` | `Total nilai transaksi {periode} adalah {nilai}.` |
+| `retribusi` | `Total retribusi {periode} adalah {retribusi} (tarif {persen}%).` |
+| `ikan_terbanyak` | `Ikan dengan berat terbanyak {periode} adalah {jenis_ikan}: {berat} dari {jumlah} transaksi.` |
+| `transaksi_terakhir` | `Transaksi terbaru: {nama_nelayan}, {jenis_ikan} {berat} dengan harga {harga_per_kg}/kg pada {tanggal}, nilai {nilai}.` |
+| `transaksi_terakhir`, data kosong | `Belum ada transaksi yang dicatat.` |
+| `sapaan` | `Halo, {username}! Tanyakan rekap, jumlah transaksi, berat, nilai, atau retribusi. Contoh: "rekap bulan ini".` |
+| `bantuan` | `Contoh pertanyaan: "rekap bulan ini", "berapa transaksi hari ini", "total retribusi oktober 2026", "ikan terbanyak minggu ini", "transaksi terakhir".` |
+| Tanggal tidak valid | `Tanggal di pertanyaan tidak valid. Tulis tanggal seperti 2026-10-22 atau 22/10/2026.` |
+| Tidak dikenali | `Maaf, saya belum mengerti pertanyaan itu. Ketik "bantuan" untuk melihat contoh pertanyaan.` |
+
+#### Contoh dengan data `db/seed.sql` (hari ini = 2026-10-22, tarif 0.03)
+
+| `pesan` | `niat` | `jawaban` |
+| --- | --- | --- |
+| `rekap dari 01/10/2026 sampai 22/10/2026` | `rekap` | `Rekap pada 01/10/2026 sampai 22/10/2026: 5 transaksi, total berat 370,75 kg, nilai Rp 11.577.000, retribusi Rp 347.310 (tarif 3%).` |
+| `Berapa transaksi hari ini?` | `jumlah` | `Ada 3 transaksi pada 22/10/2026.` |
+| `total retribusi hari ini` | `retribusi` | `Total retribusi pada 22/10/2026 adalah Rp 208.935 (tarif 3%).` |
+| `berat ikan kemarin` | `berat` | `Total berat ikan pada 21/10/2026 adalah 175 kg.` |
+| `nilai september 2026` | `nilai` | `Total nilai transaksi pada 01/09/2026 sampai 30/09/2026 adalah Rp 4.500.000.` |
+| `ikan terbanyak bulan ini` | `ikan_terbanyak` | `Ikan dengan berat terbanyak pada 01/10/2026 sampai 22/10/2026 adalah Cakalang: 215,5 kg dari 2 transaksi.` |
+| `transaksi terakhir` | `transaksi_terakhir` | `Transaksi terbaru: Ibu Merry, Julung-julung 30,25 kg dengan harga Rp 22.000/kg pada 22/10/2026, nilai Rp 665.500.` |
+| `rekap januari 2025` | `rekap` | `Tidak ada transaksi pada 01/01/2025 sampai 31/01/2025.` |
+| `rekap 2026-02-30` | — (`dikenali: false`) | `Tanggal di pertanyaan tidak valid. Tulis tanggal seperti 2026-10-22 atau 22/10/2026.` |
+| `cuaca besok bagaimana` | — (`dikenali: false`) | `Maaf, saya belum mengerti pertanyaan itu. Ketik "bantuan" untuk melihat contoh pertanyaan.` |
+
 ## 5. Konfigurasi bersama (environment variables)
 
 ### Backend (`backend/.env`, tidak di-commit; contoh di `backend/.env.example`)
@@ -372,6 +504,10 @@ curl -i -b cookie.txt -H "Content-Type: application/json" \
 curl -s -c dinas.txt -H "Content-Type: application/json" \
   -d '{"username":"dinas01","password":"dinas123"}' http://localhost:3000/api/login
 curl -b dinas.txt "http://localhost:3000/api/rekap?dari=2026-10-01&sampai=2026-10-22"
+
+# chat (petugas maupun dinas)
+curl -b dinas.txt -H "Content-Type: application/json" \
+  -d '{"pesan":"rekap dari 01/10/2026 sampai 22/10/2026"}' http://localhost:3000/api/chat
 ```
 
 ## 8. Mengubah kontrak

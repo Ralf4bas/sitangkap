@@ -72,6 +72,14 @@ Satu issue per baris. Judul memakai ID supaya mudah dirujuk di commit dan PR (`f
 | FE-08 Halaman dinas | Magen | frontend | FE-05 |
 | FE-09–FE-10 Responsif + cek manual | Magen | frontend | FE-08, B-10 |
 | CI-01..CI-06 Jenkins + webhook (fase 2) | tmthy | ci | Semua di atas |
+| AI-01 Kontrak asisten chat (FR-012) | tmthy | kontrak | — |
+| AI-02 Figma 30 panel "Tanya SiTangkap" | tmthy | frontend | AI-01 |
+| B-13 Aturan chat + tes T-17..T-20 | tmthy (review Rafli) | backend | AI-01 |
+| B-14 Handler `POST /api/chat` + tes T-21..T-22 | tmthy (review Rafli) | backend | B-13 |
+| FE-11 API + mock chat | tmthy (review Magen) | frontend | AI-01 |
+| FE-12 Panel chat + cek F-14..F-16 | tmthy (review Magen) | frontend | FE-11, B-14, AI-02 |
+
+Tugas chat (AI-01 s.d. FE-12) dikerjakan tmthy dengan pengecualian folder di `AGENTS.md` bagian 1. Nama branch tetap memakai peran folder yang diubah: `backend/tmthy-b13-aturan-chat`, `backend/tmthy-b14-handler-chat`, `frontend/tmthy-fe11-api-chat`, `frontend/tmthy-fe12-panel-chat`.
 
 ### P-05 · Bagikan Figma dan kirim pesan pembuka
 

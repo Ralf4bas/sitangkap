@@ -17,6 +17,17 @@ Kamu bekerja di repo **SiTangkap**: aplikasi web pencatatan transaksi lelang ika
 | Backend | Rafli | `docs/roles/backend-rafli.md` | `backend/` |
 | Database | abas | `docs/roles/database-abas.md` | `db/` |
 
+**Pengecualian fitur asisten chat (FR-012, tahap B-13, B-14, FE-11, FE-12):** dikerjakan tmthy, bukan pemilik folder. Untuk tahap itu saja, tmthy boleh mengubah file berikut, dan tidak ada file lain di `backend/` atau `frontend/`:
+
+| Tahap | File yang boleh diubah tmthy |
+| --- | --- |
+| B-13 | `backend/services/chat.go`, `backend/services/chat_test.go` |
+| B-14 | `backend/handlers/chat.go`, `backend/routes/chat_test.go`, satu baris rute `POST /api/chat` di `backend/routes/web.go`, data tes tambahan di `backend/routes/memstore_test.go` |
+| FE-11 | Tipe `JawabanChat` di `frontend/src/scripts/types.ts`, fungsi `chat` di `frontend/src/scripts/api.ts` dan `frontend/src/scripts/mock.ts` |
+| FE-12 | `frontend/src/components/ChatPanel.astro`, `frontend/src/scripts/chat.ts`, baris pemasangan `<ChatPanel />` di `frontend/src/pages/petugas.astro` dan `frontend/src/pages/dinas.astro` |
+
+PR tahap backend wajib di-approve Rafli, PR tahap frontend wajib di-approve Magen. PM tidak bisa meng-approve PR-nya sendiri. Semua aturan lain di file ini tetap berlaku, termasuk dependensi dan perintah verifikasi peran yang bersangkutan.
+
 Kalau pengguna tidak menyebut perannya, **tanyakan dulu** sebelum mengubah file apa pun.
 
 ## 2. Aturan yang berlaku untuk semua peran

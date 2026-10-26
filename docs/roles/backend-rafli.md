@@ -48,6 +48,7 @@ backend/
     hitung.go                    HitungNilai, HitungRetribusi, KeTransaksiJSON, HitungRekap (BR-05)
     validasi.go                  ParseTransaksi, ParseRentang (BR-02..04, BR-07, BR-09)
     sesi.go                      Sessions: sesi login di memori
+    chat.go                      aturan asisten chat (B-13, setelah AI-01)
   helpers/
     respond.go                   WriteJSON, WriteError, WriteData, DecodeBody, pesan error kontrak
   handlers/
@@ -56,6 +57,7 @@ backend/
     transaksi.go                 List/Create/Update/DeleteTransaksiHandler
     rekap.go                     RekapHandler
     health.go                    HealthHandler
+    chat.go                      ChatHandler (B-14, setelah AI-01)
   middlewares/
     auth.go                      Auth.Require: cek sesi (401) dan peran (403)
     logging.go                   LogRequests, RecoverPanic
@@ -436,6 +438,54 @@ go test ./...
 3. Jalankan semua perintah curl di bagian 7 kontrak API. Respons harus sama bentuknya dengan kontrak.
 4. Simpan transaksi dengan data yang **sama persis** dua kali lewat `PUT`; keduanya harus 200 (membuktikan `clientFoundRows=true` terpasang).
 
+## B-13 · `services/chat.go`: aturan asisten chat (FR-012)
+
+> **B-13 dan B-14 dikerjakan tmthy, Rafli me-review dan meng-approve PR-nya.** Daftar file yang boleh diubah ada di `AGENTS.md` bagian 1.
+
+Kerjakan setelah PR kontrak AI-01 digabung. Semua aturan, urutan, dan templat ada di kontrak bagian `POST /api/chat`. Bagian ini hanya membagi pekerjaannya.
+
+Tidak ada dependensi baru dan tidak ada query baru. Cukup `strings`, `regexp` (boleh), `time`, dan `strconv` dari library standar.
+
+| Fungsi (saran nama) | Tugas |
+| --- | --- |
+| `NormalisasiPesan(s string) string` | Langkah 1 kontrak: trim, huruf kecil, buang tanda baca kecuali `/` dan `-`, rapatkan spasi |
+| `ParseChat(pesan string, today time.Time) (niat, dari, sampai string, ok bool)` | Langkah 2 dan 3: rentang R1–R10 lalu niat N1–N9. `ok = false` untuk tanggal tidak valid. `niat = ""` untuk tidak dikenali |
+| `SusunJawaban(niat string, rows []models.TransaksiRow, dari, sampai string, tarif float64, username string) string` | Langkah 4: isi templat. Angka total diambil dari `HitungRekap` yang sudah ada, **jangan** menghitung ulang dengan rumus sendiri |
+| `formatRupiah`, `formatBerat`, `formatTanggal`, `formatPersen` | Format angka di jawaban, sama dengan tampilan frontend |
+
+Fungsi di atas tidak menyentuh HTTP dan SQL, jadi bisa dites tanpa server. Pencocokan kata kunci wajib per kata utuh. Cara paling mudah: bungkus pesan dengan spasi (`" " + pesan + " "`), lalu cari `" " + kata + " "`.
+
+Tes unit di `services/chat_test.go`:
+
+| ID | Skenario | Harapan |
+| --- | --- | --- |
+| T-17 | Normalisasi `"Berapa  Transaksi, HARI INI?"`; pesan `"kgx"` | `"berapa transaksi hari ini"`; `"kgx"` **tidak** cocok dengan niat `berat` |
+| T-18 | Rentang dengan today = 2026-10-22 (Kamis): `hari ini`, `kemarin`, `minggu ini`, `bulan lalu`, `bulan ini`, `tahun ini`, `februari`, `oktober 2025`, satu tanggal, dua tanggal, tanpa pola, `2026-02-30`, dua tanggal terbalik | `22/22`, `21/21`, `19–22`, `2026-09-01–2026-09-30`, `2026-10-01–22`, `2026-01-01–2026-10-22`, `2026-02-01–2026-02-28`, `2025-10-01–2025-10-31`, sesuai tanggal, sesuai tanggal, default bulan ini; dua kasus terakhir `ok = false` |
+| T-19 | Urutan niat: `halo rekap`, `total retribusi`, `transaksi terakhir`, `ikan terbanyak`, `bulan ini`, `halo`, `cuaca besok` | `rekap`, `retribusi`, `transaksi_terakhir`, `ikan_terbanyak`, `rekap`, `sapaan`, tidak dikenali |
+| T-20 | Kesepuluh baris tabel "Contoh dengan data `db/seed.sql`" di kontrak, dengan 8 baris seed | `jawaban` sama persis, karakter per karakter |
+
+## B-14 · Handler dan rute `POST /api/chat`
+
+| Langkah handler (`handlers/chat.go`) | Catatan |
+| --- | --- |
+| 1. Sesi lewat `middlewares.Auth.Require` dengan peran `petugas` dan `dinas` | 401 bila tidak ada sesi |
+| 2. `helpers.DecodeBody` ke `{ "pesan": json.RawMessage }` | JSON rusak atau body > 10 KB → 400 |
+| 3. Validasi `pesan` (BR-12) | Kosong setelah trim → 422 `fields.pesan = "Pertanyaan wajib diisi."`; lebih dari 200 karakter (hitung rune, bukan byte) → `"Pertanyaan paling banyak 200 karakter."`. Bukan string → pesan "wajib diisi" |
+| 4. `ParseChat` | `ok = false` atau niat kosong → langsung 200 dengan `dikenali: false` |
+| 5. Ambil data | Niat dengan rentang → `ListTransaksi(dari, sampai)` (Q-04). `transaksi_terakhir` → `ListTransaksi` tanpa rentang (Q-03), pakai baris pertama. `sapaan` dan `bantuan` → tanpa query |
+| 6. `SusunJawaban` → `200 {"data": JawabanChat}` | `dari`/`sampai` bernilai `null` untuk niat tanpa rentang |
+
+Log: catat `niat` saja, **jangan** isi `pesan`. Daftarkan rute `"POST /api/chat"` di `routes/web.go`.
+
+Tes HTTP di `routes/chat_test.go`:
+
+| ID | Skenario | Harapan |
+| --- | --- | --- |
+| T-21 | Tanpa cookie; `pesan` kosong, `"   "`, 201 karakter, angka `5`; JSON rusak | 401; 422 dengan pesan kontrak (empat kasus); 400 |
+| T-22 | Login sebagai petugas lalu dinas, kirim `rekap dari 01/10/2026 sampai 22/10/2026`; kirim `cuaca besok` | Keduanya 200; angka di jawaban sama dengan `GET /api/rekap` untuk rentang itu; `cuaca besok` → `dikenali: false`, `niat`, `dari`, `sampai` bernilai `null` |
+
+Uji integrasi: jalankan curl chat di kontrak bagian 7 terhadap MySQL yang baru di-seed.
+
 ## Koordinasi
 
 | Kapan | Dengan siapa | Apa |
@@ -444,11 +494,13 @@ go test ./...
 | Setelah login, `/api/me`, `GET /api/transaksi` jalan (CP-2) | Frontend | Kabari Magen: dia boleh mematikan mode mock (`PUBLIC_MOCK=0`) untuk halaman itu |
 | Setiap ada kebingungan kontrak | PM | Issue berlabel `kontrak`. Jangan mengubah bentuk respons sendiri |
 | Sebelum fase 2 | PM | Pastikan `go build -o sitangkap .` di folder `backend/` menghasilkan satu binary, dan backend bisa melayani `STATIC_DIR` |
+| PR B-13 dan B-14 dari tmthy dibuka | PM | Review dan approve: cek jawaban sama persis dengan tabel contoh di kontrak, dan tidak ada file di luar daftar `AGENTS.md` bagian 1 yang berubah |
 
 ## Checklist selesai
 
 - [ ] Hanya dua dependensi di `go.mod`
-- [ ] `go vet ./...` bersih, `go test ./...` lulus T-01 s.d. T-16
+- [ ] `go vet ./...` bersih, `go test ./...` lulus T-01 s.d. T-16 (dan T-17 s.d. T-22 setelah B-13, B-14)
+- [ ] Jawaban chat sama persis dengan tabel contoh di kontrak; isi `pesan` tidak muncul di log
 - [ ] Semua respons dan error cocok dengan kontrak (dicek dengan curl)
 - [ ] Tidak ada `fmt.Sprintf` untuk menyusun SQL; semua memakai `?`
 - [ ] `.env` tidak ter-commit; `.env.example` ter-commit
