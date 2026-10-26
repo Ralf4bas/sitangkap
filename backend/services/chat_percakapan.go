@@ -9,7 +9,7 @@ var aturanPercakapan = []struct {
 	niat  string
 	frasa []string
 }{
-	{"siapa_kamu", []string{"siapa kamu", "kamu siapa", "nama kamu", "namamu", "kamu bot", "kamu robot", "kamu manusia"}},
+	{"siapa_kamu", []string{"nama kamu", "namamu", "kamu bot", "kamu robot", "kamu manusia"}}, // juga: kamu dan siapa
 	{"apa_kabar", []string{"apa kabar", "bagaimana kabar", "kabar kamu", "kabarmu"}},
 	{"terima_kasih", []string{"terima kasih"}},
 	{"maaf", []string{"maaf", "sorry", "sori"}},
@@ -30,7 +30,7 @@ func niatPercakapan(c pencocok, tokens []string) string {
 			}
 			continue
 		}
-		if c.ada(a.frasa...) {
+		if c.ada(a.frasa...) || (a.niat == "siapa_kamu" && c.ada("kamu") && c.ada("siapa")) {
 			return a.niat
 		}
 	}

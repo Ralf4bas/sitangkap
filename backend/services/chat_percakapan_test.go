@@ -13,6 +13,7 @@ func TestT23NiatPercakapan(t *testing.T) {
 	kasus := []struct{ pesan, niat, gaya string }{
 		{"Siapa kamu?", "siapa_kamu", GayaNetral},
 		{"kamu bot ya bro", "siapa_kamu", GayaSantai},
+		{"kamu itu siapa ya?", "siapa_kamu", GayaNetral},
 		{"Apa kabar?", "apa_kabar", GayaNetral},
 		{"apa kabar bro", "apa_kabar", GayaSantai},
 		{"Terima kasih", "terima_kasih", GayaFormal},
@@ -107,6 +108,7 @@ func TestT25PrioritasDanDeterministik(t *testing.T) {
 		"tidak ada transaksi hari ini?":   "jumlah",
 		"halo apa kabar":                  "apa_kabar",
 		"kamu bisa apa":                   "bantuan",
+		"capek banget hari ini":           "capek",
 	} {
 		if j := tanya(pesan, Konteks{Gaya: GayaNetral}, "petugas01"); str(j.Niat) != niat {
 			t.Errorf("%q: niat %s, mau %s", pesan, str(j.Niat), niat)
