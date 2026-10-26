@@ -1,7 +1,7 @@
 // FE-04 · Semua panggilan ke backend. Path relatif /api/..., tanpa redirect (itu tugas guard.ts).
 
 import { ApiError } from './types';
-import type { DaftarTransaksi, Rekap, Rentang, Transaksi, TransaksiInput, User } from './types';
+import type { DaftarTransaksi, JawabanChat, KonteksChat, Rekap, Rentang, Transaksi, TransaksiInput, User } from './types';
 import * as mock from './mock';
 
 export * from './types';
@@ -97,5 +97,12 @@ export async function deleteTransaksi(id: number): Promise<void> {
 export async function rekap(range?: Rentang): Promise<Rekap> {
   if (MOCK) return mock.rekap(range);
   const r = await panggil<Rekap>('GET', '/api/rekap' + query(range));
+  return r!.data;
+}
+
+// konteks = konteks dari jawaban sebelumnya; hanya dikirim bila ada.
+export async function chat(pesan: string, konteks?: KonteksChat | null): Promise<JawabanChat> {
+  if (MOCK) return mock.chat(pesan, konteks);
+  const r = await panggil<JawabanChat>('POST', '/api/chat', konteks ? { pesan, konteks } : { pesan });
   return r!.data;
 }

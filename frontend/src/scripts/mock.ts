@@ -2,7 +2,7 @@
 // Data disimpan di memori (hilang saat halaman dimuat ulang). "Sesi" mock ada di sessionStorage.
 
 import { ApiError } from './types';
-import type { DaftarTransaksi, Rekap, Rentang, Role, Transaksi, TransaksiInput, User } from './types';
+import type { DaftarTransaksi, JawabanChat, KonteksChat, Rekap, Rentang, Role, Transaksi, TransaksiInput, User } from './types';
 import { awalBulanISO, hariIniISO } from './format';
 import { hitungNilai, hitungRetribusi } from './hitung';
 
@@ -214,5 +214,26 @@ export async function rekap(range?: Rentang): Promise<Rekap> {
     total_nilai: hasil.reduce((s, t) => s + t.nilai, 0),
     total_retribusi: hasil.reduce((s, t) => s + t.retribusi, 0),
     tarif_retribusi: TARIF,
+  };
+}
+
+// Mock chat tidak meniru aturan Si Tangkap (aturannya di backend): hanya validasi, sesi,
+// dan templat "tidak dikenali" variasi 0 gaya Biasa.
+export async function chat(pesan: string, konteks?: KonteksChat | null): Promise<JawabanChat> {
+  sesiAktif();
+  const isi = (pesan ?? '').trim();
+  if (isi.length === 0 || [...isi].length > 200) {
+    const msg = isi.length === 0 ? 'Pertanyaan wajib diisi.' : 'Pertanyaan paling banyak 200 karakter.';
+    throw galat(422, 'VALIDATION_ERROR', 'Data yang dikirim belum benar.', { pesan: msg });
+  }
+  return {
+    jawaban:
+      'Maaf, saya belum mengerti pertanyaan itu. Saya bisa membantu soal rekap, jumlah transaksi, berat, nilai, dan retribusi. Ketik "bantuan" untuk contoh.',
+    dikenali: false,
+    niat: null,
+    metrik: null,
+    dari: null,
+    sampai: null,
+    konteks: konteks ?? { niat: null, metrik: null, dari: null, sampai: null, gaya: 'netral' },
   };
 }

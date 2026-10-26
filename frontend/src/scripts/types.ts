@@ -53,6 +53,27 @@ export interface DaftarTransaksi {
   meta: { jumlah: number; dari: string | null; sampai: string | null; tarif_retribusi: number };
 }
 
+// FE-11 · Asisten chat Si Tangkap (POST /api/chat).
+export type Metrik = 'jumlah' | 'berat' | 'nilai' | 'retribusi';
+
+export interface KonteksChat {
+  niat: string | null;
+  metrik: Metrik[] | null;
+  dari: string | null;
+  sampai: string | null;
+  gaya: 'santai' | 'formal' | 'netral';
+}
+
+export interface JawabanChat {
+  jawaban: string;
+  dikenali: boolean;
+  niat: string | null;
+  metrik: Metrik[] | null;
+  dari: string | null;
+  sampai: string | null;
+  konteks: KonteksChat;
+}
+
 export class ApiError extends Error {
   status: number;
   code: string;
