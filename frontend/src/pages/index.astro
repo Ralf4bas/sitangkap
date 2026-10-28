@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Masuk · SiTangkap">
+  <main class="login-latar">
+    <div class="login-kartu">
+      <div>
+        <h1>SiTangkap</h1>
+        <p class="subjudul">Pencatatan transaksi lelang ikan di TPI</p>
+      </div>
+
+      <div id="pesan-error" class="kotak-error" role="alert" hidden></div>
+
+      <form id="form-login" novalidate style="display:flex;flex-direction:column;gap:14px">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" />
+        </div>
+        <button id="btn-masuk" type="submit" class="btn btn-utama">Masuk</button>
+      </form>
+
+      <p class="catatan">Akun dibuat oleh pengelola sistem. Hubungi dinas bila lupa password.</p>
+    </div>
+  </main>
+
+  <script>
+    import '../scripts/login.ts';
+  </script>
+</Layout>

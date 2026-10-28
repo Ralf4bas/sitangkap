@@ -32,7 +32,7 @@ git config core.hooksPath .githooks
 
 ## Menjalankan di laptop
 
-Prasyarat: Git, Go 1.22+, Node.js 22, MySQL 8.0.16+ atau MariaDB 10.6+.
+Prasyarat: Git, Go 1.26+, Node.js 22.23.4+ (syarat Astro 7; versi 22 yang lebih lama gagal saat `npm run build`), MySQL 8.0.16+ atau MariaDB 10.6+.
 
 ```bash
 # 1. Database

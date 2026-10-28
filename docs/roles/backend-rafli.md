@@ -17,43 +17,71 @@
 
 ## Aturan teknis yang tidak boleh dilanggar
 
-1. Go 1.22 atau lebih baru. Router memakai `net/http` standar dengan pola `"GET /api/transaksi/{id}"`. **Tanpa framework** (Gin, Echo, Fiber, Chi, dll.).
+1. Go 1.26 atau lebih baru (`golang.org/x/crypto` terbaru membutuhkan go 1.26). Router memakai `net/http` standar dengan pola `"GET /api/transaksi/{id}"`. **Tanpa framework** (Gin, Echo, Fiber, Chi, dll.).
 2. Dependensi hanya dua: `github.com/go-sql-driver/mysql` dan `golang.org/x/crypto/bcrypt`. Jangan menambah library lain (termasuk `godotenv`, `sqlx`, `gorm`, `testify`).
 3. Semua query memakai `?` (NFR-002) dan diambil dari `db/queries.md`.
-4. Semua angka uang dihitung di satu tempat (`hitung.go`) dengan aritmetika integer (lihat B-05).
+4. Semua angka uang dihitung di satu tempat (`services/hitung.go`) dengan aritmetika integer (lihat B-05).
 5. Pesan error ke klien hanya yang tertulis di kontrak. Error asli dicatat ke log, tidak pernah dikirim ke klien (NFR-008).
 6. Password tidak pernah dicatat di log dan tidak pernah dikirim di respons.
 
 ## Struktur folder
 
-Satu paket `main`, datar. Pembagian file mengikuti pola controller, service, dan repository dari materi Class Diagram, supaya mudah dijelaskan di laporan.
+Satu package per folder (B-12), mengikuti pola controller, service, dan repository dari materi Class Diagram, supaya mudah dijelaskan di laporan. `main.go` hanya merakit semuanya. Jalankan dengan `go run .` dari folder `backend/`, **bukan** `go run main.go` (perintah itu hanya meng-compile satu file).
 
 ```text
 backend/
-  go.mod                 module sitangkap/backend, go 1.22
+  go.mod                         module sitangkap/backend, go 1.26.0
   go.sum
-  .env.example           contoh konfigurasi (di-commit)
-  .env                   konfigurasi lokal (TIDAK di-commit)
-  main.go                baca config, buka DB, rakit App, daftarkan rute, jalankan server
-  config.go              baca .env + environment, validasi nilai
-  respond.go             helper JSON: writeJSON, writeError, decodeBody
-  store.go               interface Store + tipe data (repository: kontrak)
-  store_mysql.go         implementasi Store dengan MySQL (repository)
-  auth.go                sesi, cookie, middleware withAuth, handler login/logout/me (controller)
-  transaksi.go           handler list/create/update/delete (controller)
-  rekap.go               handler rekap (controller)
-  hitung.go              hitungNilai, hitungRetribusi, rekap (service: business rule BR-05)
-  validasi.go            parse + validasi body transaksi dan query tanggal (service: BR-02..04, BR-07, BR-09)
-  health.go              handler /health
-  memstore_test.go       Store palsu di memori, khusus tes
-  *_test.go              tes T-01 s.d. T-16
+  .env.example                   contoh konfigurasi (di-commit)
+  .env                           konfigurasi lokal (TIDAK di-commit)
+  main.go                        baca config, buka DB, rakit handler + middleware, jalankan server
+  config/
+    env.go                       LoadDotEnv, Load (validasi nilai), DSN
+    database.go                  OpenDB: koneksi dibuka sekali di awal, ping 5 detik
+  models/
+    user.go                      User, UserWithHash
+    transaksi.go                 TransaksiInput, TransaksiRow, TransaksiJSON, RekapJSON
+    chat.go                      KonteksChat, JawabanChat (B-13)
+  repository/
+    store.go                     interface Store + ErrNotFound (kontrak repository)
+    mysql.go                     MySQLStore: Q-01 s.d. Q-09 dari db/queries.md
+  services/
+    hitung.go                    HitungNilai, HitungRetribusi, KeTransaksiJSON, HitungRekap (BR-05)
+    validasi.go                  ParseTransaksi, ParseRentang (BR-02..04, BR-07, BR-09)
+    sesi.go                      Sessions: sesi login di memori
+    chat_normalisasi.go          normalisasi, gaya, slang, salah ketik (B-13)
+    chat_niat.go                 rentang dan niat data (B-13)
+    chat_jawaban.go              templat dan variasi jawaban data (B-13)
+    chat_percakapan.go           niat percakapan dan templat per gaya (B-15)
+  helpers/
+    respond.go                   WriteJSON, WriteError, WriteData, DecodeBody, pesan error kontrak
+  handlers/
+    handler.go                   struct Handler (Store, Sessions, Cfg, Now)
+    auth.go                      LoginHandler, LogoutHandler, MeHandler, cookie
+    transaksi.go                 List/Create/Update/DeleteTransaksiHandler
+    rekap.go                     RekapHandler
+    health.go                    HealthHandler
+    chat.go                      ChatHandler (B-14)
+  middlewares/
+    auth.go                      Auth.Require: cek sesi (401) dan peran (403)
+    logging.go                   LogRequests, RecoverPanic
+  routes/
+    web.go                       SetupRoutes: semua endpoint kontrak + file statis STATIC_DIR
+    static.go                    file statis tanpa daftar isi folder
+    memstore_test.go             Store palsu di memori, khusus tes
+    api_test.go, transaksi_test.go   tes HTTP T-01 s.d. T-11, T-13 s.d. T-16
 ```
 
-| Lapisan (materi SAD) | File | Tanggung jawab |
+Tes unit ada di package masing-masing (`config`, `helpers`, `services` termasuk T-12, `repository`).
+
+| Lapisan (materi SAD) | Folder | Tanggung jawab |
 | --- | --- | --- |
-| Controller | `auth.go`, `transaksi.go`, `rekap.go`, `health.go` | Terima request, cek sesi dan peran, panggil service dan repository, tulis respons |
-| Service | `hitung.go`, `validasi.go` | Aturan bisnis, tanpa HTTP dan tanpa SQL |
-| Repository | `store.go`, `store_mysql.go` | Akses database |
+| Controller | `handlers/`, `middlewares/`, `routes/` | Terima request, cek sesi dan peran, panggil service dan repository, tulis respons |
+| Service | `services/` | Aturan bisnis, tanpa HTTP dan tanpa SQL |
+| Repository | `repository/` | Akses database |
+| Model | `models/` | Struktur data yang dipakai semua lapisan |
+
+Bagian B-02 sampai B-11 di bawah ditulis saat backend masih satu paket datar. Nama fungsinya sekarang diekspor dan dipindah ke folder di atas, misalnya `loadConfig` menjadi `config.Load`, `hitungNilai` menjadi `services.HitungNilai`, `withAuth` menjadi `middlewares.Auth.Require`, dan `a.routes()` menjadi `routes.SetupRoutes`. Isi dan aturannya tidak berubah.
 
 ## B-01 · Inisialisasi modul
 
@@ -414,6 +442,71 @@ go test ./...
 3. Jalankan semua perintah curl di bagian 7 kontrak API. Respons harus sama bentuknya dengan kontrak.
 4. Simpan transaksi dengan data yang **sama persis** dua kali lewat `PUT`; keduanya harus 200 (membuktikan `clientFoundRows=true` terpasang).
 
+## B-13 · Aturan inti chat (FR-012)
+
+> **B-13, B-14, dan B-15 dikerjakan tmthy, Rafli me-review dan meng-approve PR-nya.** Daftar file yang boleh diubah ada di `AGENTS.md` bagian 1.
+
+Kerjakan setelah PR kontrak AI-01 digabung. Semua aturan, urutan, dan templat ada di kontrak bagian `POST /api/chat`. Bagian ini hanya membagi pekerjaannya.
+
+Tidak ada dependensi baru dan tidak ada query baru. Cukup library standar (`strings`, `hash/fnv`, `time`, `strconv`, `unicode`).
+
+| File | Isi |
+| --- | --- |
+| `models/chat.go` | `KonteksChat` dan `JawabanChat` (bentuk JSON di kontrak) |
+| `services/chat_normalisasi.go` | Langkah 1–4: normalisasi, deteksi gaya, kamus slang, salah ketik (jarak *optimal string alignment*) |
+| `services/chat_niat.go` | Langkah 5–6: rentang R1–R12 (termasuk rentang dari konteks) dan niat data N1–N6 |
+| `services/chat_jawaban.go` | Langkah 7–8 untuk niat data, bantuan, dan tidak dikenali: konteks respons, templat, pemilihan variasi FNV-1a, format angka. Angka total diambil dari `HitungRekap`, **jangan** menghitung ulang dengan rumus sendiri |
+
+Fungsi di atas tidak menyentuh HTTP dan SQL, jadi bisa dites tanpa server. Niat percakapan (P1–P10) dikerjakan di B-15; sebelum B-15 masuk, pesan percakapan dijawab dengan templat "tidak dikenali".
+
+Tes unit di `services/chat_test.go`:
+
+| ID | Skenario | Harapan |
+| --- | --- | --- |
+| T-17 | Normalisasi dan bahasa sehari-hari: `"Berapa  Transaksi, HARI INI?"`; `"brp trx kmrn"`; `"total retribsi hr ini"`; `"transkasi"`; token `"kgx"`; gaya `"halo bro"`, `"Selamat pagi"`, `"rekap"` dengan dan tanpa konteks gaya `formal` | `"berapa transaksi hari ini"`; `"berapa transaksi kemarin"`; `"total retribusi hari ini"`; `"transaksi"`; `"kgx"` tidak berubah dan tidak cocok dengan metrik `berat`; gaya `santai`, `formal`, `formal`/`netral` |
+| T-18 | Rentang dengan today = 2026-10-22 (Kamis): `hari ini`, `kemarin`, `minggu lalu`, `minggu ini`, `bulan lalu`, `bulan ini`, `tahun lalu`, `tahun ini`, `februari`, `oktober 2025`, satu tanggal, dua tanggal, tanpa pola tanpa konteks, tanpa pola dengan konteks 2026-09-01–2026-09-30, `2026-02-30`, dua tanggal terbalik | `22/22`, `21/21`, `12–18 Okt`, `19–22 Okt`, `1–30 Sep`, `1–22 Okt`, `1 Jan–31 Des 2025`, `1 Jan–22 Okt`, `1–28 Feb 2026`, `1–31 Okt 2025`, sesuai tanggal, sesuai tanggal, default bulan ini, rentang konteks; dua kasus terakhir tidak valid |
+| T-19 | Urutan niat: `halo rekap`, `total retribusi`, `transaksi terakhir`, `ikan terbanyak`, `berat sama nilai`, `berapa transaksi berat nilai retribusi`, `bulan ini` tanpa konteks, `kalau kemarin` dengan konteks `retribusi`, `cuaca besok` | `rekap`, `retribusi`, `transaksi_terakhir`, `ikan_terbanyak`, `gabungan` [berat, nilai], `rekap`, `rekap`, `retribusi`, tidak dikenali |
+| T-20 | Semua baris tabel "Contoh satu pertanyaan" di kontrak, dengan 8 baris seed | `jawaban`, `niat`, `metrik`, `dari`, `sampai` sama persis, karakter per karakter |
+
+## B-14 · Handler dan rute `POST /api/chat`
+
+| Langkah handler (`handlers/chat.go`) | Catatan |
+| --- | --- |
+| 1. Sesi lewat `middlewares.Auth.Require` dengan peran `petugas` dan `dinas` | 401 bila tidak ada sesi |
+| 2. `helpers.DecodeBody` ke `{ "pesan": json.RawMessage, "konteks": json.RawMessage }` | JSON rusak atau body > 10 KB → 400 |
+| 3. Validasi `pesan` (BR-12) | Kosong setelah trim → 422 `fields.pesan = "Pertanyaan wajib diisi."`; lebih dari 200 karakter (hitung rune) → `"Pertanyaan paling banyak 200 karakter."`. Bukan string → pesan "wajib diisi" |
+| 4. Baca `konteks` | Field yang tidak valid diabaikan satu per satu sesuai kontrak, tidak pernah menghasilkan error |
+| 5. Pahami pesan (fungsi B-13) | Tanggal tidak valid atau tidak dikenali → langsung 200 dengan `dikenali: false` |
+| 6. Ambil data | Niat dengan rentang → `ListTransaksi(dari, sampai)` (Q-04). `transaksi_terakhir` → `ListTransaksi` tanpa rentang (Q-03), pakai baris pertama. Niat lain → tanpa query |
+| 7. Susun jawaban → `200 {"data": JawabanChat}` | `konteks` selalu ada di respons |
+
+Log: catat `niat` saja, **jangan** isi `pesan`. Daftarkan rute `"POST /api/chat"` di `routes/web.go`.
+
+Tes HTTP di `routes/chat_test.go`:
+
+| ID | Skenario | Harapan |
+| --- | --- | --- |
+| T-21 | Tanpa cookie; `pesan` kosong, `"   "`, 201 karakter, angka `5`; JSON rusak; `konteks` berisi tipe salah (`"niat": 5`, `"dari": "kemarin"`, `"gaya": "kasar"`) | 401; 422 dengan pesan kontrak (empat kasus); 400; konteks rusak tetap 200 dan dianggap kosong (`gaya: "netral"`) |
+| T-22 | Login sebagai petugas lalu dinas, kirim `rekap dari 01/10/2026 sampai 22/10/2026`; kirim `cuaca besok`; jalankan percakapan B di kontrak baris 3–5 dengan mengirim balik `konteks` | Keduanya 200 dan angka sama dengan `GET /api/rekap`; `cuaca besok` → `dikenali: false`, `niat`, `metrik`, `dari`, `sampai` bernilai `null`; jawaban percakapan B baris 3–5 sama persis dengan kontrak |
+
+## B-15 · Percakapan ringan dan gaya bahasa
+
+| File | Isi |
+| --- | --- |
+| `services/chat_percakapan.go` | Niat percakapan P1–P10 dan templatnya per gaya (Biasa/Santai, masing-masing dua variasi) |
+
+Niat percakapan diperiksa **setelah** niat data. Konteks respons untuk niat percakapan meneruskan konteks request (langkah 7 kontrak), sehingga pertanyaan data berikutnya tetap bisa memakai rentang sebelumnya.
+
+Tes unit di `services/chat_percakapan_test.go`:
+
+| ID | Skenario | Harapan |
+| --- | --- | --- |
+| T-23 | Setiap niat P1–P10 dengan satu contoh pesan biasa dan satu santai, misalnya `siapa kamu`, `apa kabar bro`, `makasih`, `maaf ya`, `bye`, `capek nih`, `wkwkwk`, `sip`, `gak usah`, `selamat sore` | Niat dan gaya sesuai; `jawaban` sama dengan templat kontrak untuk indeks variasi yang dihitung dari pesan akhir |
+| T-24 | Percakapan A dan B di kontrak, baris demi baris, dengan konteks dari respons sebelumnya | `jawaban`, `niat`, dan `konteks` sama persis dengan tabel kontrak |
+| T-25 | Prioritas dan ketahanan: `halo, rekap bulan ini`; `makasih, retribusi kemarin dong`; `tidak ada transaksi hari ini?`; pesan yang sama dikirim dua kali | `rekap`; `retribusi`; `jumlah`; jawaban kedua sama persis dengan yang pertama |
+
+Uji integrasi: jalankan curl chat di kontrak bagian 7 terhadap MySQL yang baru di-seed.
+
 ## Koordinasi
 
 | Kapan | Dengan siapa | Apa |
@@ -422,11 +515,13 @@ go test ./...
 | Setelah login, `/api/me`, `GET /api/transaksi` jalan (CP-2) | Frontend | Kabari Magen: dia boleh mematikan mode mock (`PUBLIC_MOCK=0`) untuk halaman itu |
 | Setiap ada kebingungan kontrak | PM | Issue berlabel `kontrak`. Jangan mengubah bentuk respons sendiri |
 | Sebelum fase 2 | PM | Pastikan `go build -o sitangkap .` di folder `backend/` menghasilkan satu binary, dan backend bisa melayani `STATIC_DIR` |
+| PR B-13, B-14, dan B-15 dari tmthy dibuka | PM | Review dan approve: cek jawaban sama persis dengan tabel contoh di kontrak, dan tidak ada file di luar daftar `AGENTS.md` bagian 1 yang berubah |
 
 ## Checklist selesai
 
 - [ ] Hanya dua dependensi di `go.mod`
-- [ ] `go vet ./...` bersih, `go test ./...` lulus T-01 s.d. T-16
+- [ ] `go vet ./...` bersih, `go test ./...` lulus T-01 s.d. T-16 (dan T-17 s.d. T-25 setelah B-13, B-14, B-15)
+- [ ] Jawaban chat sama persis dengan tabel contoh di kontrak; isi `pesan` tidak muncul di log
 - [ ] Semua respons dan error cocok dengan kontrak (dicek dengan curl)
 - [ ] Tidak ada `fmt.Sprintf` untuk menyusun SQL; semua memakai `?`
 - [ ] `.env` tidak ter-commit; `.env.example` ter-commit
@@ -445,7 +540,7 @@ Aturan:
 - Hanya ubah file di folder backend/.
 - Ikuti docs/01-api-contract.md persis: nama field, kode status, kode dan pesan error.
 - Dependensi hanya github.com/go-sql-driver/mysql dan golang.org/x/crypto/bcrypt.
-- Router net/http standar Go 1.22 dengan pola "METHOD /path/{id}".
+- Go 1.26+, router net/http standar dengan pola "METHOD /path/{id}".
 - Semua SQL dari db/queries.md dengan placeholder ?.
 - Tulis atau perbarui tes yang relevan, lalu jalankan `go vet ./...` dan `go test ./...` dan tunjukkan hasilnya.
 Kalau kontrak tidak menjawab sesuatu, berhenti dan tanyakan; jangan menebak atau menambah endpoint.

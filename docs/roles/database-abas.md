@@ -269,6 +269,7 @@ Reset data kapan saja: jalankan ulang `db/seed.sql`.
 | Bila backend butuh kolom atau query baru | Backend + PM | Lewat issue berlabel `kontrak`; ubah `01-api-contract.md` dulu bila menyangkut field API |
 | Sebelum demo | PM | Jalankan ulang seed agar data demo bersih |
 | Fase 2 (server) | PM | Bantu membuat user database production dengan password kuat (bukan `sitangkap_dev`), huruf dan angka saja |
+| Asisten chat (FR-012) | Backend | **Tidak ada tugas database.** Chat memakai Q-03 dan Q-04 yang sudah ada dan tidak menyimpan riwayat. Contoh jawaban di kontrak bergantung pada isi `db/seed.sql`, jadi kabari PM dan backend bila seed berubah |
 
 ## Checklist selesai
 
@@ -279,7 +280,7 @@ Reset data kapan saja: jalankan ulang `db/seed.sql`.
 - [ ] Constraint menolak berat negatif
 - [ ] `queries.md` berisi Q-01 s.d. Q-09 dan DSN
 - [ ] `db/README.md` sudah dicoba oleh satu anggota lain dari nol
-- [ ] Semua lewat pull request ke `main`, ditinjau PM
+- [ ] Semua lewat pull request ke `dev`, ditinjau PM
 
 ## Prompt siap pakai untuk AI agent
 

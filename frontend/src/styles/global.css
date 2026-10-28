@@ -1,0 +1,129 @@
+/* Token desain dari Figma (FE-02). Pakai variabel, jangan tulis warna langsung di komponen. */
+:root {
+  --c-brand: #0b6e8a;        /* tombol utama, topbar, judul login */
+  --c-ink: #12263a;          /* teks utama */
+  --c-muted: #5b6b7a;        /* teks sekunder, header tabel */
+  --c-line: #dbe3ea;         /* garis, border input dan kartu */
+  --c-bg: #f4f7f9;           /* latar halaman, header tabel */
+  --c-surface: #ffffff;      /* kartu, tabel, modal */
+  --c-danger: #b3261e;       /* tombol hapus, teks error */
+  --c-danger-bg: #fdedec;    /* kotak pesan error */
+  --radius-sm: 8px;          /* tombol, input */
+  --radius-md: 12px;         /* kartu, tabel */
+  --radius-lg: 16px;         /* kartu login, modal */
+  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 14px/1.5 var(--font);
+  color: var(--c-ink);
+  background: var(--c-bg);
+}
+
+/* Topbar: tinggi 64, padding 16/32 */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 16px 32px;
+  background: var(--c-brand);
+  color: #fff;
+}
+
+/* Konten: padding 32, jarak antarblok 20 */
+.konten {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 32px;
+}
+
+h1 { margin: 0; font-size: 24px; font-weight: 700; }
+.subjudul { margin: 0; font-size: 14px; color: var(--c-muted); }
+
+/* Tombol: padding 10/16, radius 8, teks 14 semibold */
+.btn {
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: 600 14px/1.5 var(--font);
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-utama { background: var(--c-brand); color: #fff; }
+.btn-sekunder { background: var(--c-surface); color: var(--c-brand); border-color: var(--c-brand); }
+.btn-bahaya { background: var(--c-danger); color: #fff; }
+
+/* Input: label 13 medium; kotak padding 10/12, border --c-line, radius 8 */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 500; }
+.field input,
+.field select {
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+  font: 14px/1.5 var(--font);
+  color: var(--c-ink);
+}
+.field-error { margin: 0; font-size: 13px; color: var(--c-danger); }
+
+/* Kotak pesan error */
+.kotak-error {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--c-danger-bg);
+  color: var(--c-danger);
+}
+
+/* Kartu ringkasan: padding 18/20, radius 12, judul 13, angka 24 tebal */
+.kartu {
+  padding: 18px 20px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.kartu .judul { font-size: 13px; color: var(--c-muted); }
+.kartu .angka { font-size: 24px; font-weight: 700; }
+
+/* Tabel: header 12 semibold huruf besar, baris 14 padding 12/16, kolom angka rata kanan */
+.tabel-bungkus {
+  overflow-x: auto;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+table { width: 100%; border-collapse: collapse; }
+th {
+  padding: 12px 16px;
+  background: var(--c-bg);
+  color: var(--c-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+}
+td { padding: 12px 16px; border-bottom: 1px solid var(--c-line); font-size: 14px; }
+.angka { text-align: right; }
+
+/* Modal: lebar 520 (form) atau 440 (konfirmasi), padding 28, radius 16, latar gelap 45% */
+dialog {
+  padding: 28px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  width: min(520px, calc(100vw - 32px));
+}
+dialog.konfirmasi { width: min(440px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+
+@media (max-width: 600px) {
+  .topbar { padding: 12px 16px; }
+  .konten { padding: 16px; }
+}

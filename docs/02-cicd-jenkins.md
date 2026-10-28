@@ -38,21 +38,21 @@ sudo apt update && sudo apt -y upgrade
 sudo apt -y install git curl rsync fontconfig openjdk-21-jre mysql-server
 ```
 
-**Go** (unduh versi stabil terbaru dari <https://go.dev/dl/>, contoh di bawah memakai 1.24.x):
+**Go** (unduh versi stabil terbaru dari <https://go.dev/dl/>, minimal 1.26 karena `golang.org/x/crypto` terbaru membutuhkannya; contoh di bawah memakai 1.26.x):
 
 ```bash
-curl -fsSLO https://go.dev/dl/go1.24.7.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.24.7.linux-amd64.tar.gz
+curl -fsSLO https://go.dev/dl/go1.26.10.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.26.10.linux-amd64.tar.gz
 sudo ln -sf /usr/local/go/bin/go /usr/local/bin/go      # agar user jenkins juga menemukan go
 go version
 ```
 
-**Node.js 22** (NodeSource):
+**Node.js 22** (NodeSource). Astro 7 butuh **22.23.4 atau lebih baru**:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt -y install nodejs
-node -v
+node -v                     # harus v22.23.4 atau lebih baru
 ```
 
 **Jenkins:** ikuti perintah resmi terbaru di <https://www.jenkins.io/doc/book/installing/linux/> bagian Debian/Ubuntu (alamat kunci repositori bisa berubah antarversi). Setelah terpasang:
@@ -83,6 +83,19 @@ sudo mysql < /tmp/sitangkap-setup/db/schema.sql
 sudo mysql sitangkap < /tmp/sitangkap-setup/db/seed.sql     # opsional: data demo untuk presentasi
 ```
 
+**Wajib bila seed dijalankan:** password akun demo (`petugas123`, `dinas123`) tertulis di repo public, dan aplikasi terbuka di IP publik. Ganti keduanya **sebelum** port 3000 dibuka. Buat hash bcrypt cost 12 untuk password baru (huruf dan angka saja), lalu simpan ke database:
+
+```bash
+sudo apt -y install apache2-utils
+HASH_PETUGAS=$(htpasswd -nbBC 12 "" 'GANTI_PASSWORD_PETUGAS' | tr -d ':\n')
+HASH_DINAS=$(htpasswd -nbBC 12 "" 'GANTI_PASSWORD_DINAS' | tr -d ':\n')
+sudo mysql sitangkap -e "UPDATE users SET password_hash = '$HASH_PETUGAS' WHERE username = 'petugas01';
+UPDATE users SET password_hash = '$HASH_DINAS' WHERE username = 'dinas01';"
+history -c                  # hapus password dari riwayat shell
+```
+
+Hash dari `htpasswd` berawalan `$2y$`; library bcrypt Go menerimanya. Cek: login dengan password lama harus gagal `401`, password baru berhasil. Kalau seed dijalankan ulang di server, ulangi langkah ini.
+
 Buat user aplikasi dengan **password kuat yang berbeda** dari `sitangkap_dev`, terdiri dari huruf dan angka saja supaya aman di file `.env` (jangan pakai `db/app_user.sql` apa adanya):
 
 ```bash
@@ -97,8 +110,8 @@ FLUSH PRIVILEGES;"
 
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin sitangkap
-sudo mkdir -p /opt/sitangkap/bin /opt/sitangkap/frontend
-sudo chown -R jenkins:jenkins /opt/sitangkap/bin /opt/sitangkap/frontend
+sudo mkdir -p /opt/sitangkap/bin /opt/sitangkap/frontend /opt/sitangkap/prev
+sudo chown -R jenkins:jenkins /opt/sitangkap/bin /opt/sitangkap/frontend /opt/sitangkap/prev
 
 sudo tee /opt/sitangkap/.env > /dev/null <<'EOF'
 PORT=3000
@@ -152,7 +165,7 @@ Repo → **Settings → Webhooks → Add webhook**:
 | --- | --- |
 | Payload URL | `http://IP_VPS:8080/github-webhook/` (**garis miring di akhir wajib**) |
 | Content type | `application/json` |
-| Secret | Opsional. Bila diisi, masukkan nilai yang sama di Jenkins: Manage Jenkins → System → bagian GitHub → Advanced → shared secret (letak menu bisa sedikit berbeda antarversi plugin) |
+| Secret | **Wajib.** Port 8080 terbuka ke internet, jadi tanpa secret siapa pun bisa mengirim webhook palsu ke Jenkins. Buat dengan `openssl rand -hex 32`, lalu masukkan nilai yang sama di Jenkins: Manage Jenkins → System → bagian GitHub → Advanced → shared secret (letak menu bisa sedikit berbeda antarversi plugin). Jangan simpan nilainya di repo |
 | Events | **Just the push event** |
 | Active | Centang |
 
@@ -166,8 +179,8 @@ File ada di root repo. Ringkasan stage:
 | --- | --- | --- |
 | Checkout | `checkout scm` + cetak commit | Repo tidak bisa diambil |
 | Uji & build (paralel) | Backend: `go vet`, `go test`, `go build`. Frontend: `npm ci`, `npm run build` | Ada tes gagal atau build error |
-| Deploy | Salin binary dan `frontend/dist`, `systemctl restart sitangkap`. Job hanya membangun `*/main` (CI-04), jadi tidak perlu kondisi branch | Izin folder/sudo salah |
-| Smoke test | `curl /health` sampai 15 kali | Aplikasi tidak hidup atau database tidak terjangkau |
+| Deploy | Simpan versi yang sedang jalan ke `/opt/sitangkap/prev`, salin binary dan `frontend/dist`, `systemctl restart sitangkap`. Job hanya membangun `*/main` (CI-04), jadi tidak perlu kondisi branch | Izin folder/sudo salah |
+| Smoke test | `curl /health` sampai 15 kali. Gagal: kembalikan versi dari `/opt/sitangkap/prev` dan restart (rollback otomatis) | Aplikasi tidak hidup atau database tidak terjangkau |
 
 Demo "CI menangkap kesalahan": ubah satu angka di tabel tes T-12 lewat branch tugas, merge ke `dev`, lalu rilis ke `main`. Build berhenti merah di stage Backend, **tidak ada deploy**, aplikasi di server tetap versi lama. Kembalikan, push lagi, build hijau.
 
@@ -182,6 +195,8 @@ Demo "CI menangkap kesalahan": ubah satu angka di tabel tes T-12 lewat branch tu
 | `sudo: a password is required` | File sudoers belum terpasang atau path `systemctl` berbeda (`which systemctl`) |
 | Smoke test gagal, `db: down` | Isi `/opt/sitangkap/.env` (password DB) salah; cek `sudo journalctl -u sitangkap -n 50` |
 | `text file busy` saat menyalin binary | Pakai langkah salin ke `.new` lalu `mv` seperti di `Jenkinsfile` |
+| Log "Rollback ke versi sebelumnya" | Versi baru gagal smoke test dan versi lama sudah dipulihkan. Cari penyebabnya di log `journalctl` yang dicetak sebelum rollback. Di deploy pertama belum ada versi lama, jadi rollback dilewati |
+| `npm ci`/`npm run build`: `Node.js ... is not supported by Astro` | Node di VPS lebih lama dari 22.23.4. Ulangi pemasangan Node di CI-01 |
 | Halaman `/petugas` 404 di server | `STATIC_DIR` tidak menunjuk ke `/opt/sitangkap/frontend` atau stage frontend tidak menyalin `dist` |
 
 ## Batasan yang perlu disebut di laporan

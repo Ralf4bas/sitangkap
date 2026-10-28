@@ -1,0 +1,12 @@
+---
+interface Props {
+  judul: string;
+  id: string;
+}
+const { judul, id } = Astro.props;
+---
+
+<div class="kartu">
+  <div class="judul">{judul}</div>
+  <div class="angka" id={id}>–</div>
+</div>

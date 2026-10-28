@@ -28,8 +28,8 @@ Kirim ke grup, minta tiap orang membalas hasil perintahnya:
 
 ```bash
 git --version
-go version        # 1.22 atau lebih baru  (wajib: Rafli, Magen [uji integrasi F-xx]; disarankan: semua)
-node -v           # v22.x                  (wajib: Magen; disarankan: semua)
+go version        # 1.26 atau lebih baru  (wajib: Rafli, Magen [uji integrasi F-xx]; disarankan: semua)
+node -v           # v22.23.4 atau lebih baru (syarat Astro 7) (wajib: Magen; disarankan: semua)
 mysql --version   # MySQL 8.0.16+ / MariaDB 10.6+ (wajib: abas, Rafli, Magen; disarankan: semua)
 ```
 
@@ -72,6 +72,15 @@ Satu issue per baris. Judul memakai ID supaya mudah dirujuk di commit dan PR (`f
 | FE-08 Halaman dinas | Magen | frontend | FE-05 |
 | FE-09–FE-10 Responsif + cek manual | Magen | frontend | FE-08, B-10 |
 | CI-01..CI-06 Jenkins + webhook (fase 2) | tmthy | ci | Semua di atas |
+| AI-01 Kontrak asisten chat (FR-012) | tmthy | kontrak | — |
+| AI-02 Figma 30 panel "Tanya SiTangkap" | tmthy | frontend | AI-01 |
+| B-13 Aturan chat + tes T-17..T-20 | tmthy (review Rafli) | backend | AI-01 |
+| B-14 Handler `POST /api/chat` + tes T-21..T-22 | tmthy (review Rafli) | backend | B-13 |
+| B-15 Percakapan ringan dan gaya + tes T-23..T-25 | tmthy (review Rafli) | backend | B-14 |
+| FE-11 API + mock chat | tmthy (review Magen) | frontend | AI-01 |
+| FE-12 Panel chat + cek F-14..F-17 | tmthy (review Magen) | frontend | FE-11, B-15, AI-02 |
+
+Tugas chat (AI-01 s.d. FE-12) dikerjakan tmthy dengan pengecualian folder di `AGENTS.md` bagian 1. Nama branch tetap memakai peran folder yang diubah: `backend/tmthy-b13-aturan-chat`, `backend/tmthy-b14-handler-chat`, `backend/tmthy-b15-percakapan-chat`, `frontend/tmthy-fe11-api-chat`, `frontend/tmthy-fe12-panel-chat`.
 
 ### P-05 · Bagikan Figma dan kirim pesan pembuka
 

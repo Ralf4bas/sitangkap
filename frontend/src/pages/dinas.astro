@@ -1,0 +1,68 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Topbar from '../components/Topbar.astro';
+import StatCard from '../components/StatCard.astro';
+import ChatPanel from '../components/ChatPanel.astro';
+---
+
+<Layout title="Rekap Hasil Lelang · SiTangkap">
+  <Topbar />
+
+  <main id="halaman" class="konten" hidden>
+    <div>
+      <h1>Rekap Hasil Lelang</h1>
+      <p class="subjudul">Semua transaksi lelang dari TPI Contoh</p>
+    </div>
+
+    <ChatPanel />
+
+    <div class="filter">
+      <div class="field">
+        <label for="dari">Dari tanggal</label>
+        <input id="dari" type="date" />
+      </div>
+      <div class="field">
+        <label for="sampai">Sampai tanggal</label>
+        <input id="sampai" type="date" />
+      </div>
+      <button type="button" id="btn-terapkan" class="btn btn-utama">Terapkan</button>
+      <div class="filter-cepat">
+        <button type="button" class="btn btn-sekunder" data-cepat="hari">Hari ini</button>
+        <button type="button" class="btn btn-sekunder" data-cepat="bulan">Bulan ini</button>
+        <button type="button" class="btn btn-sekunder" data-cepat="tahun">Tahun ini</button>
+      </div>
+    </div>
+
+    <div id="pesan-halaman" class="kotak-error" role="alert" hidden></div>
+
+    <div class="grid-kartu">
+      <StatCard judul="Total berat" id="k-berat" />
+      <StatCard judul="Nilai transaksi" id="k-nilai" />
+      <StatCard judul="Retribusi" id="k-retribusi" />
+      <StatCard judul="Jumlah transaksi" id="k-jumlah" />
+    </div>
+    <p class="keterangan" id="keterangan"></p>
+
+    <div class="tabel-bungkus">
+      <table>
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Nelayan</th>
+            <th>Jenis ikan</th>
+            <th class="angka">Berat (kg)</th>
+            <th class="angka">Harga/kg</th>
+            <th class="angka">Nilai</th>
+            <th class="angka">Retribusi</th>
+          </tr>
+        </thead>
+        <tbody id="isi-tabel"></tbody>
+      </table>
+    </div>
+    <p class="footer-tabel" id="footer-tabel"></p>
+  </main>
+
+  <script>
+    import '../scripts/dinas.ts';
+  </script>
+</Layout>

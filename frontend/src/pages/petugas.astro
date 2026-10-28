@@ -1,0 +1,102 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Topbar from '../components/Topbar.astro';
+import ChatPanel from '../components/ChatPanel.astro';
+---
+
+<Layout title="Hasil Lelang · SiTangkap">
+  <Topbar />
+
+  <main id="halaman" class="konten" hidden>
+    <div class="judul-baris">
+      <div>
+        <h1>Hasil Lelang</h1>
+        <p class="subjudul">Transaksi lelang yang sudah selesai di TPI Contoh</p>
+      </div>
+      <button type="button" id="btn-tambah" class="btn btn-utama">+ Tambah transaksi</button>
+    </div>
+
+    <ChatPanel />
+
+    <div id="pesan-halaman" class="kotak-error" role="alert" hidden></div>
+
+    <div class="tabel-bungkus">
+      <table>
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Nelayan</th>
+            <th>Jenis ikan</th>
+            <th class="angka">Berat (kg)</th>
+            <th class="angka">Harga/kg</th>
+            <th class="angka">Nilai</th>
+            <th class="angka">Retribusi</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="isi-tabel"></tbody>
+      </table>
+    </div>
+    <p class="footer-tabel" id="footer-tabel"></p>
+  </main>
+
+  <dialog id="dlg-form" aria-labelledby="judul-form">
+    <h2 id="judul-form">Tambah transaksi</h2>
+    <form id="form-transaksi" novalidate>
+      <div class="form-grid">
+        <div id="galat-form" class="kotak-error" role="alert" hidden></div>
+
+        <div class="field">
+          <label for="f-nama">Nama nelayan</label>
+          <input id="f-nama" type="text" autocomplete="off" />
+          <p class="field-error" id="e-nama" role="alert" hidden></p>
+        </div>
+        <div class="field">
+          <label for="f-ikan">Jenis ikan</label>
+          <input id="f-ikan" type="text" autocomplete="off" />
+          <p class="field-error" id="e-ikan" role="alert" hidden></p>
+        </div>
+        <div class="form-dua">
+          <div class="field">
+            <label for="f-berat">Berat (kg)</label>
+            <input id="f-berat" type="text" inputmode="decimal" autocomplete="off" />
+            <p class="field-error" id="e-berat" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="f-harga">Harga lelang per kg (Rp)</label>
+            <input id="f-harga" type="text" inputmode="numeric" autocomplete="off" />
+            <p class="field-error" id="e-harga" role="alert" hidden></p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-tanggal">Tanggal lelang</label>
+          <input id="f-tanggal" type="date" />
+          <p class="field-error" id="e-tanggal" role="alert" hidden></p>
+        </div>
+
+        <div class="pratinjau">
+          <div><span>Nilai transaksi</span><strong id="pv-nilai">–</strong></div>
+          <div><span id="pv-label-retribusi">Retribusi</span><strong id="pv-retribusi">–</strong></div>
+        </div>
+      </div>
+      <div class="modal-aksi">
+        <button type="button" id="btn-batal-form" class="btn btn-sekunder">Batal</button>
+        <button type="submit" id="btn-simpan" class="btn btn-utama">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-hapus" class="konfirmasi" aria-labelledby="judul-hapus">
+    <h2 id="judul-hapus">Hapus transaksi ini?</h2>
+    <p id="rincian-hapus" class="subjudul"></p>
+    <div id="galat-hapus" class="kotak-error" role="alert" hidden style="margin-top:12px"></div>
+    <div class="modal-aksi">
+      <button type="button" id="btn-batal-hapus" class="btn btn-sekunder">Batal</button>
+      <button type="button" id="btn-hapus" class="btn btn-bahaya">Hapus</button>
+    </div>
+  </dialog>
+
+  <script>
+    import '../scripts/petugas.ts';
+  </script>
+</Layout>
